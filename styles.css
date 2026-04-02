@@ -1,0 +1,265 @@
+:root {
+  --bg: #f7f8fd;
+  --panel: #ffffff;
+  --text: #1e2433;
+  --muted: #667089;
+  --blue: #3d7df5;
+  --green: #2bbf7f;
+  --red: #e8576e;
+  --gold: #d39a36;
+  --radius: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, "Segoe UI", sans-serif;
+  background: linear-gradient(180deg, #f7f8fd 0%, #f1f4fc 100%);
+  color: var(--text);
+}
+
+.dashboard {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px 20px 40px;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--blue);
+  font-weight: 600;
+}
+
+h1 {
+  margin: 6px 0 8px;
+  font-size: 2rem;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.action-btn {
+  border: 0;
+  background: var(--blue);
+  color: white;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.metric-grid,
+.visual-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.metric-grid {
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  margin-bottom: 14px;
+}
+
+.metric-card,
+.panel {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: 0 6px 20px rgba(26, 43, 84, 0.07);
+}
+
+.metric-card h2,
+.panel h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.metric-value {
+  margin: 10px 0 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.balance .metric-value { color: var(--blue); }
+.income .metric-value { color: var(--green); }
+.expenses .metric-value { color: var(--red); }
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.progress-track {
+  flex: 1;
+  height: 12px;
+  background: #e9edf8;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #59d08f, #2bbf7f);
+}
+
+.progress-label {
+  margin: 0;
+  font-weight: 600;
+}
+
+.goal-copy {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.visual-grid {
+  grid-template-columns: 1.3fr 1fr;
+}
+
+.panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.panel-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.trend-chart {
+  width: 100%;
+  height: 170px;
+}
+
+.trend-chart polyline {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-axis line {
+  stroke: #b7c2d9;
+  stroke-width: 1.5;
+}
+
+.category-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.category-list li {
+  display: grid;
+  grid-template-columns: 92px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.92rem;
+}
+
+.category-list .bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #ebeff8;
+  overflow: hidden;
+}
+
+.category-list .bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--gold);
+}
+
+@media (max-width: 940px) {
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+
+  .visual-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-header {
+    flex-direction: column;
+  }
+
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 16px;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .metric-grid,
+  .visual-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .visual-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .transaction-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .transaction-form input,
+  .transaction-form select,
+  .transaction-form button {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+}
+
+.transaction-form {
+  display: none;
+}
