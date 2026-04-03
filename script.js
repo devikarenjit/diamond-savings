@@ -1,318 +1,468 @@
-let transactions = [];
-let monthlyGoal = 0;
-let editingId = null;
+const STORAGE_KEY = "diamond-savings-dashboard-v1";
 
-const today = new Date().toISOString().split("T")[0];
-document.getElementById("date").value = today;
+const $ = {
+  date: document.getElementById("date"),
+  goalAmount: document.getElementById("goal-amount"),
+  transactionForm: document.getElementById("transactionForm"),
+  amount: document.getElementById("amount"),
+  type: document.getElementById("type"),
+  category: document.getElementById("category"),
+  notes: document.getElementById("notes"),
+  saveBtn: document.getElementById("saveBtn"),
+  formError: document.getElementById("formError"),
+  searchInput: document.getElementById("searchInput"),
+  transactionList: document.getElementById("transactionList"),
+  currentBalance: document.getElementById("current-balance"),
+  totalIncome: document.getElementById("total-income"),
+  totalExpenses: document.getElementById("total-expenses"),
+  savingsFill: document.getElementById("savings-fill"),
+  savingsPercent: document.getElementById("savings-percent"),
+  goalMessage: document.getElementById("goalMessage"),
+  goalInput: document.getElementById("goalInput"),
+  categoryList: document.getElementById("category-list"),
+  weeklyList: document.getElementById("weekly-list"),
+  topCategory: document.getElementById("topCategory"),
+  incomeVsExpenses: document.getElementById("incomeVsExpenses"),
+  frequentType: document.getElementById("frequentType"),
+  weekComparison: document.getElementById("weekComparison"),
+  openFormBtn: document.getElementById("openFormBtn"),
+  cancelBtn: document.getElementById("cancelBtn"),
+  goalBtn: document.getElementById("goalBtn"),
+  splashScreen: document.getElementById("splash-screen"),
+  appRoot: document.querySelector(".dashboard")
+};
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD"
-  }).format(value || 0);
-}
+const dataStore = {
+  load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return { transactions: [], monthlyGoal: 0 };
 
-function openForm() {
-  document.getElementById("transactionForm").classList.add("open");
-}
-
-function clearForm() {
-  editingId = null;
-  document.getElementById("amount").value = "";
-  document.getElementById("type").value = "income";
-  document.getElementById("category").value = "";
-  document.getElementById("date").value = today;
-  document.getElementById("notes").value = "";
-  document.getElementById("saveBtn").textContent = "Add";
-  document.getElementById("formError").textContent = "";
-}
-
-function closeForm() {
-  document.getElementById("transactionForm").classList.remove("open");
-  clearForm();
-}
-
-function addTransaction() {
-  const amount = Number(document.getElementById("amount").value);
-  const type = document.getElementById("type").value;
-  const category = document.getElementById("category").value.trim();
-  const date = document.getElementById("date").value || today;
-  const notes = document.getElementById("notes").value.trim();
-
-  if (!amount || amount <= 0 || !category) {
-    document.getElementById("formError").textContent = "Amount and category are required.";
-    return;
-  }
-
-  if (editingId) {
-    transactions = transactions.map((t) =>
-      t.id === editingId ? { ...t, amount, type, category, date, notes } : t
-    );
-  } else {
-    transactions.push({
-      id: Date.now(),
-      amount,
-      type,
-      category,
-      date,
-      notes
-    });
-  }
-
-  closeForm();
-  renderAll();
-}
-
-function displayTransactions() {
-  const query = document.getElementById("searchInput").value.trim().toLowerCase();
-  const list = document.getElementById("transactionList");
-  list.innerHTML = "";
-
-  const filtered = transactions
-    .filter((t) => t.category.toLowerCase().includes(query) || t.notes.toLowerCase().includes(query))
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  if (filtered.length === 0) {
-    list.innerHTML = "<li class='empty-state'>No transactions found.</li>";
-    return;
-  }
-
-  filtered.forEach((t) => {
-    const li = document.createElement("li");
-    li.className = "transaction-item";
-    li.innerHTML = `
-      <div>
-        <p class="item-main">${t.type.toUpperCase()} · ${formatCurrency(t.amount)} · ${t.category}</p>
-        <p class="item-sub">${t.date}${t.notes ? ` · ${t.notes}` : ""}</p>
-      </div>
-      <div class="item-actions">
-        <button type="button" data-edit="${t.id}">Edit</button>
-        <button type="button" data-delete="${t.id}" class="danger">Delete</button>
-      </div>
-    `;
-    list.appendChild(li);
-  });
-}
-
-function deleteTransaction(id) {
-  transactions = transactions.filter((t) => t.id !== id);
-  renderAll();
-}
-
-function editTransaction(id) {
-  const t = transactions.find((tx) => tx.id === id);
-  if (!t) return;
-
-  openForm();
-  editingId = id;
-  document.getElementById("amount").value = t.amount;
-  document.getElementById("type").value = t.type;
-  document.getElementById("category").value = t.category;
-  document.getElementById("date").value = t.date;
-  document.getElementById("notes").value = t.notes;
-  document.getElementById("saveBtn").textContent = "Update";
-}
-
-function updateDashboard() {
-  let income = 0;
-  let expenses = 0;
-
-  transactions.forEach((t) => {
-    if (t.type === "income") income += t.amount;
-    else expenses += t.amount;
-  });
-
-  const savings = Math.max(0, income - expenses);
-  document.getElementById("current-balance").textContent = formatCurrency(income - expenses);
-  document.getElementById("total-income").textContent = formatCurrency(income);
-  document.getElementById("total-expenses").textContent = formatCurrency(expenses);
-
-  const progress = monthlyGoal > 0 ? Math.min(100, Math.round((savings / monthlyGoal) * 100)) : 0;
-  document.getElementById("savings-fill").style.width = `${progress}%`;
-  document.getElementById("savings-percent").textContent = `${progress}%`;
-
-  const goalMessage = document.getElementById("goalMessage");
-  if (monthlyGoal === 0) {
-    goalMessage.textContent = "Set a monthly goal to track progress.";
-  } else if (savings >= monthlyGoal) {
-    goalMessage.textContent = "Great work—you reached your monthly savings goal!";
-  } else {
-    goalMessage.textContent = `You are ${formatCurrency(monthlyGoal - savings)} away from your goal.`;
-  }
-}
-
-function updateCategoryBreakdown() {
-  const list = document.getElementById("category-list");
-  list.innerHTML = "";
-
-  const expenses = transactions.filter((t) => t.type === "expense");
-  if (expenses.length === 0) {
-    list.innerHTML = "<li class='empty-state'>No expenses yet.</li>";
-    return;
-  }
-
-  const totals = expenses.reduce((acc, t) => {
-    acc[t.category] = (acc[t.category] || 0) + t.amount;
-    return acc;
-  }, {});
-
-  const max = Math.max(...Object.values(totals));
-  Object.entries(totals)
-    .sort((a, b) => b[1] - a[1])
-    .forEach(([category, amount]) => {
-      const li = document.createElement("li");
-      const pct = Math.round((amount / max) * 100);
-      li.innerHTML = `
-        <span>${category}</span>
-        <div class="bar"><span style="width:${pct}%"></span></div>
-        <strong>${formatCurrency(amount)}</strong>
-      `;
-      list.appendChild(li);
-    });
-}
-
-function updateWeeklyTrend() {
-  const weekly = document.getElementById("weekly-list");
-  weekly.innerHTML = "";
-
-  const days = [...Array(7)].map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return d;
-  });
-
-  const spending = days.map((d) => {
-    const key = d.toISOString().split("T")[0];
-    return transactions
-      .filter((t) => t.type === "expense" && t.date === key)
-      .reduce((sum, t) => sum + t.amount, 0);
-  });
-
-  const max = Math.max(1, ...spending);
-  days.forEach((d, index) => {
-    const value = spending[index];
-    const li = document.createElement("li");
-    li.innerHTML = `
-      <span>${d.toLocaleDateString("en-US", { weekday: "short" })}</span>
-      <div class="week-bar"><span style="width:${Math.round((value / max) * 100)}%"></span></div>
-      <strong>${formatCurrency(value)}</strong>
-    `;
-    weekly.appendChild(li);
-  });
-}
-
-function updateInsights() {
-  if (transactions.length === 0) {
-    document.getElementById("topCategory").textContent = "-";
-    document.getElementById("incomeVsExpenses").textContent = "-";
-    document.getElementById("frequentType").textContent = "-";
-    document.getElementById("weekComparison").textContent = "-";
-    return;
-  }
-
-  const categoryTotals = {};
-  const typeCounts = { income: 0, expense: 0 };
-
-  transactions.forEach((t) => {
-    if (t.type === "expense") {
-      categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+      const parsed = JSON.parse(raw);
+      return {
+        transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
+        monthlyGoal: Number(parsed.monthlyGoal) || 0
+      };
+    } catch {
+      return { transactions: [], monthlyGoal: 0 };
     }
-    typeCounts[t.type] += 1;
-  });
+  },
 
-  const topCategory = Object.keys(categoryTotals).length
-    ? Object.keys(categoryTotals).reduce((a, b) => (categoryTotals[a] > categoryTotals[b] ? a : b))
-    : "No expenses yet";
+  save(state) {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ transactions: state.transactions, monthlyGoal: state.monthlyGoal })
+    );
+  }
+};
 
-  const incomeAmount = transactions
-    .filter((t) => t.type === "income")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const expenseAmount = transactions
-    .filter((t) => t.type === "expense")
-    .reduce((sum, t) => sum + t.amount, 0);
+const state = {
+  ...dataStore.load(),
+  editingId: null,
+  currentView: "overview"
+};
 
-  const now = new Date();
-  const startCurrentWeek = new Date(now);
-  startCurrentWeek.setDate(now.getDate() - now.getDay());
-  startCurrentWeek.setHours(0, 0, 0, 0);
+const formatters = {
+  currency(value) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "INR"
+    }).format(value || 0).replace("₹", "Rs ");
+  }
+};
 
-  const startLastWeek = new Date(startCurrentWeek);
-  startLastWeek.setDate(startCurrentWeek.getDate() - 7);
+const transactionService = {
+  add(payload) {
+    state.transactions.push({ id: Date.now(), ...payload });
+    this.persist();
+  },
 
-  const thisWeek = transactions
-    .filter((t) => {
-      const d = new Date(t.date);
-      return t.type === "expense" && d >= startCurrentWeek;
-    })
-    .reduce((sum, t) => sum + t.amount, 0);
+  update(id, payload) {
+    state.transactions = state.transactions.map((transaction) =>
+      transaction.id === id ? { ...transaction, ...payload } : transaction
+    );
+    this.persist();
+  },
 
-  const lastWeek = transactions
-    .filter((t) => {
-      const d = new Date(t.date);
-      return t.type === "expense" && d >= startLastWeek && d < startCurrentWeek;
-    })
-    .reduce((sum, t) => sum + t.amount, 0);
+  remove(id) {
+    state.transactions = state.transactions.filter((transaction) => transaction.id !== id);
+    this.persist();
+  },
 
-  const weekCopy =
-    lastWeek === 0
-      ? `${formatCurrency(thisWeek)} this week.`
-      : `${Math.round(((thisWeek - lastWeek) / lastWeek) * 100)}% vs last week.`;
+  findById(id) {
+    return state.transactions.find((transaction) => transaction.id === id);
+  },
 
-  document.getElementById("topCategory").textContent = topCategory;
-  document.getElementById("incomeVsExpenses").textContent = `${formatCurrency(incomeAmount)} vs ${formatCurrency(expenseAmount)}`;
-  document.getElementById("frequentType").textContent = typeCounts.income >= typeCounts.expense ? "Income" : "Expense";
-  document.getElementById("weekComparison").textContent = weekCopy;
+  persist() {
+    dataStore.save(state);
+  }
+};
+
+const analytics = {
+  totals(transactions) {
+    return transactions.reduce(
+      (acc, transaction) => {
+        if (transaction.type === "income") acc.income += transaction.amount;
+        else acc.expenses += transaction.amount;
+        return acc;
+      },
+      { income: 0, expenses: 0 }
+    );
+  },
+
+  categoryTotals(transactions) {
+    return transactions
+      .filter((transaction) => transaction.type === "expense")
+      .reduce((acc, transaction) => {
+        acc[transaction.category] = (acc[transaction.category] || 0) + transaction.amount;
+        return acc;
+      }, {});
+  },
+
+  dailyExpenseAmount(transactions, dateKey) {
+    return transactions
+      .filter((transaction) => transaction.type === "expense" && transaction.date === dateKey)
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
+  },
+
+  weeklyExpenseComparison(transactions) {
+    const now = new Date();
+    const startCurrentWeek = new Date(now);
+    startCurrentWeek.setDate(now.getDate() - now.getDay());
+    startCurrentWeek.setHours(0, 0, 0, 0);
+
+    const startLastWeek = new Date(startCurrentWeek);
+    startLastWeek.setDate(startCurrentWeek.getDate() - 7);
+
+    const thisWeek = transactions
+      .filter((transaction) => {
+        const d = new Date(transaction.date);
+        return transaction.type === "expense" && d >= startCurrentWeek;
+      })
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+    const lastWeek = transactions
+      .filter((transaction) => {
+        const d = new Date(transaction.date);
+        return transaction.type === "expense" && d >= startLastWeek && d < startCurrentWeek;
+      })
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+    return { thisWeek, lastWeek };
+  }
+};
+
+const ui = {
+  setFormMode(isEditing) {
+    $.saveBtn.textContent = isEditing ? "Update" : "Add";
+  },
+
+  resetForm() {
+    state.editingId = null;
+    $.amount.value = "";
+    $.type.value = "income";
+    $.category.value = "";
+    $.date.value = getToday();
+    $.notes.value = "";
+    $.formError.textContent = "";
+    this.setFormMode(false);
+  },
+
+  openForm() {
+    $.transactionForm.classList.add("open");
+  },
+
+  closeForm() {
+    $.transactionForm.classList.remove("open");
+    this.resetForm();
+  },
+
+  createEmptyState(message) {
+    const item = document.createElement("li");
+    item.className = "empty-state";
+    item.textContent = message;
+    return item;
+  },
+
+  createBarListItem({ label, amount, percent, className }) {
+    const item = document.createElement("li");
+    item.innerHTML = `
+      <span>${label}</span>
+      <div class="${className}"><span style="width:${percent}%"></span></div>
+      <strong>${formatters.currency(amount)}</strong>
+    `;
+    return item;
+  },
+
+  renderTransactions() {
+    const query = $.searchInput.value.trim().toLowerCase();
+    const filteredTransactions = [...state.transactions]
+      .filter(
+        (transaction) =>
+          transaction.category.toLowerCase().includes(query) ||
+          transaction.notes.toLowerCase().includes(query)
+      )
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    $.transactionList.innerHTML = "";
+
+    if (!filteredTransactions.length) {
+      $.transactionList.appendChild(this.createEmptyState("No transactions found."));
+      return;
+    }
+
+    filteredTransactions.forEach((transaction) => {
+      const item = document.createElement("li");
+      item.className = "transaction-item";
+      item.innerHTML = `
+        <div>
+          <p class="item-main">${transaction.type.toUpperCase()} · ${formatters.currency(transaction.amount)} · ${transaction.category}</p>
+          <p class="item-sub">${transaction.date}${transaction.notes ? ` · ${transaction.notes}` : ""}</p>
+        </div>
+        <div class="item-actions">
+          <button type="button" data-edit="${transaction.id}">Edit</button>
+          <button type="button" data-delete="${transaction.id}" class="danger">Delete</button>
+        </div>
+      `;
+      $.transactionList.appendChild(item);
+    });
+  },
+
+  renderDashboard() {
+    const totals = analytics.totals(state.transactions);
+    const savings = Math.max(0, totals.income - totals.expenses);
+    const progress = state.monthlyGoal
+      ? Math.min(100, Math.round((savings / state.monthlyGoal) * 100))
+      : 0;
+
+    $.currentBalance.textContent = formatters.currency(totals.income - totals.expenses);
+    $.totalIncome.textContent = formatters.currency(totals.income);
+    $.totalExpenses.textContent = formatters.currency(totals.expenses);
+    $.savingsFill.style.width = `${progress}%`;
+    $.savingsPercent.textContent = `${progress}%`;
+
+    if (state.monthlyGoal === 0) {
+      $.goalMessage.textContent = "Set a monthly goal to track progress.";
+    } else if (savings >= state.monthlyGoal) {
+      $.goalMessage.textContent = "Great work—you reached your monthly savings goal!";
+    } else {
+      $.goalMessage.textContent = `You are ${formatters.currency(state.monthlyGoal - savings)} away from your goal.`;
+    }
+  },
+
+  renderCategoryBreakdown() {
+    const totalsByCategory = analytics.categoryTotals(state.transactions);
+    const entries = Object.entries(totalsByCategory).sort((a, b) => b[1] - a[1]);
+
+    $.categoryList.innerHTML = "";
+
+    if (!entries.length) {
+      $.categoryList.appendChild(this.createEmptyState("No expenses yet."));
+      return;
+    }
+
+    const maxAmount = Math.max(...entries.map(([, amount]) => amount));
+    entries.forEach(([category, amount]) => {
+      $.categoryList.appendChild(
+        this.createBarListItem({
+          label: category,
+          amount,
+          percent: Math.round((amount / maxAmount) * 100),
+          className: "bar"
+        })
+      );
+    });
+  },
+
+  renderWeeklyTrend() {
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const day = new Date();
+      day.setDate(day.getDate() - (6 - index));
+      return day;
+    });
+
+    const amounts = days.map((day) => analytics.dailyExpenseAmount(state.transactions, toDateKey(day)));
+    const maxAmount = Math.max(1, ...amounts);
+
+    $.weeklyList.innerHTML = "";
+
+    days.forEach((day, index) => {
+      $.weeklyList.appendChild(
+        this.createBarListItem({
+          label: day.toLocaleDateString("en-US", { weekday: "short" }),
+          amount: amounts[index],
+          percent: Math.round((amounts[index] / maxAmount) * 100),
+          className: "week-bar"
+        })
+      );
+    });
+  },
+
+  renderInsights() {
+    if (!state.transactions.length) {
+      $.topCategory.textContent = "-";
+      $.incomeVsExpenses.textContent = "-";
+      $.frequentType.textContent = "-";
+      $.weekComparison.textContent = "-";
+      return;
+    }
+
+    const totalsByCategory = analytics.categoryTotals(state.transactions);
+    const categoryKeys = Object.keys(totalsByCategory);
+    const topCategory = categoryKeys.length
+      ? categoryKeys.reduce((a, b) => (totalsByCategory[a] > totalsByCategory[b] ? a : b))
+      : "No expenses yet";
+
+    const totals = analytics.totals(state.transactions);
+    const counts = state.transactions.reduce(
+      (acc, transaction) => {
+        acc[transaction.type] += 1;
+        return acc;
+      },
+      { income: 0, expense: 0 }
+    );
+
+    const weekly = analytics.weeklyExpenseComparison(state.transactions);
+    const weekComparisonCopy =
+      weekly.lastWeek === 0
+        ? `${formatters.currency(weekly.thisWeek)} this week.`
+        : `${Math.round(((weekly.thisWeek - weekly.lastWeek) / weekly.lastWeek) * 100)}% vs last week.`;
+
+    $.topCategory.textContent = topCategory;
+    $.incomeVsExpenses.textContent = `${formatters.currency(totals.income)} vs ${formatters.currency(totals.expenses)}`;
+    $.frequentType.textContent = counts.income >= counts.expense ? "Income" : "Expense";
+    $.weekComparison.textContent = weekComparisonCopy;
+  },
+
+  switchView(view) {
+    document.querySelectorAll(".view-section").forEach((section) => section.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach((button) => button.classList.remove("active"));
+
+    document.getElementById(`${view}-view`).classList.add("active");
+    document
+      .querySelectorAll(`.tab-btn[data-view='${view}']`)
+      .forEach((button) => button.classList.add("active"));
+    state.currentView = view;
+  },
+
+  renderAll() {
+    this.renderTransactions();
+    this.renderDashboard();
+    this.renderCategoryBreakdown();
+    this.renderWeeklyTrend();
+    this.renderInsights();
+  }
+};
+
+function toDateKey(date) {
+  return date.toISOString().split("T")[0];
 }
 
-function setGoal() {
-  const goal = Number(document.getElementById("goalInput").value);
-  if (!goal || goal <= 0) {
-    document.getElementById("goalMessage").textContent = "Please enter a valid goal amount.";
+function getToday() {
+  return toDateKey(new Date());
+}
+
+function getFormValues() {
+  return {
+    amount: Number($.amount.value),
+    type: $.type.value,
+    category: $.category.value.trim(),
+    date: $.date.value || getToday(),
+    notes: $.notes.value.trim()
+  };
+}
+
+function isValidTransaction(payload) {
+  return payload.amount > 0 && payload.category.length > 0;
+}
+
+function handleSaveTransaction() {
+  const payload = getFormValues();
+
+  if (!isValidTransaction(payload)) {
+    $.formError.textContent = "Amount and category are required.";
     return;
   }
 
-  monthlyGoal = goal;
-  document.getElementById("goal-amount").textContent = formatCurrency(monthlyGoal);
-  document.getElementById("goalInput").value = "";
-  updateDashboard();
+  if (state.editingId) {
+    transactionService.update(state.editingId, payload);
+  } else {
+    transactionService.add(payload);
+  }
+
+  ui.closeForm();
+  ui.renderAll();
 }
 
-function switchView(view) {
-  document.querySelectorAll(".view-section").forEach((el) => el.classList.remove("active"));
-  document.querySelectorAll(".tab-btn").forEach((el) => el.classList.remove("active"));
+function handleEditTransaction(id) {
+  const transaction = transactionService.findById(id);
+  if (!transaction) return;
 
-  document.getElementById(`${view}-view`).classList.add("active");
-  document.querySelector(`.tab-btn[data-view='${view}']`).classList.add("active");
+  ui.openForm();
+  state.editingId = id;
+  $.amount.value = transaction.amount;
+  $.type.value = transaction.type;
+  $.category.value = transaction.category;
+  $.date.value = transaction.date;
+  $.notes.value = transaction.notes;
+  ui.setFormMode(true);
 }
 
-function renderAll() {
-  displayTransactions();
-  updateDashboard();
-  updateCategoryBreakdown();
-  updateWeeklyTrend();
-  updateInsights();
+function handleSetGoal() {
+  const goal = Number($.goalInput.value);
+  if (!goal || goal <= 0) {
+    $.goalMessage.textContent = "Please enter a valid goal amount.";
+    return;
+  }
+
+  state.monthlyGoal = goal;
+  transactionService.persist();
+  $.goalAmount.textContent = formatters.currency(state.monthlyGoal);
+  $.goalInput.value = "";
+  ui.renderDashboard();
 }
 
-document.getElementById("openFormBtn").addEventListener("click", () => {
-  switchView("transactions");
-  openForm();
-});
+function bindEvents() {
+  $.openFormBtn.addEventListener("click", () => {
+    ui.switchView("transactions");
+    ui.openForm();
+  });
 
-document.getElementById("saveBtn").addEventListener("click", addTransaction);
-document.getElementById("cancelBtn").addEventListener("click", closeForm);
-document.getElementById("goalBtn").addEventListener("click", setGoal);
-document.getElementById("searchInput").addEventListener("input", displayTransactions);
+  $.saveBtn.addEventListener("click", handleSaveTransaction);
+  $.cancelBtn.addEventListener("click", () => ui.closeForm());
+  $.goalBtn.addEventListener("click", handleSetGoal);
+  $.searchInput.addEventListener("input", () => ui.renderTransactions());
 
-document.getElementById("transactionList").addEventListener("click", (event) => {
-  const editId = event.target.getAttribute("data-edit");
-  const deleteId = event.target.getAttribute("data-delete");
+  $.transactionList.addEventListener("click", (event) => {
+    const editId = event.target.getAttribute("data-edit");
+    const deleteId = event.target.getAttribute("data-delete");
 
-  if (editId) editTransaction(Number(editId));
-  if (deleteId) deleteTransaction(Number(deleteId));
-});
+    if (editId) handleEditTransaction(Number(editId));
+    if (deleteId) {
+      transactionService.remove(Number(deleteId));
+      ui.renderAll();
+    }
+  });
 
-document.querySelectorAll(".tab-btn").forEach((button) => {
-  button.addEventListener("click", () => switchView(button.dataset.view));
-});
+  document.querySelectorAll(".tab-btn").forEach((button) => {
+    button.addEventListener("click", () => ui.switchView(button.dataset.view));
+  });
+}
 
-renderAll();
+
+function showSplashScreen() {
+  setTimeout(() => {
+    if ($.splashScreen) $.splashScreen.style.display = "none";
+    if ($.appRoot) $.appRoot.classList.remove("app-hidden");
+  }, 1200);
+}
+
+function initialize() {
+  showSplashScreen();
+  $.date.value = getToday();
+  $.goalAmount.textContent = formatters.currency(state.monthlyGoal);
+  bindEvents();
+  ui.renderAll();
+}
+
+initialize();

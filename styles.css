@@ -19,6 +19,26 @@ body {
   color: var(--text);
 }
 
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #f7f8fd 0%, #edf3ff 100%);
+  z-index: 9999;
+}
+
+.splash-logo {
+  width: 213px;
+  max-width: 75vw;
+  height: auto;
+}
+
+.app-hidden {
+  visibility: hidden;
+}
+
 .dashboard {
   max-width: 1080px;
   margin: 0 auto;
@@ -33,7 +53,19 @@ body {
   margin-bottom: 16px;
 }
 
-.eyebrow { margin: 0; color: var(--blue); font-weight: 600; }
+
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-logo {
+  width: 120px;
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 6px;
+}
 h1 { margin: 6px 0 8px; font-size: 2rem; }
 .subtitle { margin: 0; color: var(--muted); }
 
@@ -57,7 +89,18 @@ button.danger {
   background: var(--red);
 }
 
+.main-nav {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.main-nav .tab-btn {
+  padding: 10px 16px;
+}
+
 .mobile-nav {
+
   display: none;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
@@ -207,6 +250,7 @@ select {
 @media (max-width: 768px) {
   .dashboard { padding: 14px; }
   .dashboard-header { flex-direction: column; }
+  .main-nav { display: none; }
   .mobile-nav { display: grid; }
   .view-section { display: none; }
   .view-section.active { display: block; }

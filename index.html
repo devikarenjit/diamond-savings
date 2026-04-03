@@ -7,15 +7,26 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="dashboard" aria-label="Diamond Savings Home Dashboard">
+  <section id="splash-screen" class="splash-screen" aria-label="Splash screen">
+    <img src="Diamond Savings piggy bank logo.png" alt="Diamond Savings logo" class="splash-logo" onerror="this.onerror=null;this.src='logo.svg';" />
+  </section>
+
+  <main class="dashboard app-hidden" aria-label="Diamond Savings Home Dashboard">
     <header class="dashboard-header">
-      <div>
-        <p class="eyebrow">Diamond Savings</p>
+      <div class="brand-block">
+        <img src="Diamond Savings piggy bank logo.png" alt="Diamond Savings logo" class="brand-logo" onerror="this.onerror=null;this.src='logo.svg';" />
         <h1>Home Dashboard</h1>
         <p class="subtitle">A quick snapshot of your money in and money out.</p>
       </div>
       <button class="action-btn" id="openFormBtn" type="button">Add Transaction</button>
     </header>
+
+
+    <nav class="main-nav" aria-label="Primary dashboard navigation">
+      <button class="tab-btn active" data-view="overview" type="button">Overview</button>
+      <button class="tab-btn" data-view="transactions" type="button">Transactions</button>
+      <button class="tab-btn" data-view="insights" type="button">Insights</button>
+    </nav>
 
     <nav class="mobile-nav" aria-label="Dashboard navigation">
       <button class="tab-btn active" data-view="overview" type="button">Overview</button>
@@ -27,17 +38,17 @@
       <section class="metric-grid" aria-label="Overview metrics">
         <article class="metric-card balance">
           <h2>Current Balance</h2>
-          <p class="metric-value" id="current-balance">$0.00</p>
+          <p class="metric-value" id="current-balance">Rs 0.00</p>
         </article>
 
         <article class="metric-card income">
           <h2>Total Income</h2>
-          <p class="metric-value" id="total-income">$0.00</p>
+          <p class="metric-value" id="total-income">Rs 0.00</p>
         </article>
 
         <article class="metric-card expenses">
           <h2>Total Expenses</h2>
-          <p class="metric-value" id="total-expenses">$0.00</p>
+          <p class="metric-value" id="total-expenses">Rs 0.00</p>
         </article>
 
         <article class="metric-card savings">
@@ -49,7 +60,7 @@
             <p class="progress-label" id="savings-percent">0%</p>
           </div>
 
-          <p class="goal-copy">Goal: <span id="goal-amount">$0.00</span> this month</p>
+          <p class="goal-copy">Goal: <span id="goal-amount">Rs 0.00</span> this month</p>
           <div class="goal-section">
             <input type="number" id="goalInput" placeholder="Set your goal" min="0" step="0.01" />
             <button type="button" id="goalBtn">Set Goal</button>
