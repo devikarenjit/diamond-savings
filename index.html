@@ -6,153 +6,130 @@
   <title>Diamond Savings Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
   <main class="dashboard" aria-label="Diamond Savings Home Dashboard">
-
-    <!-- HEADER -->
     <header class="dashboard-header">
       <div>
         <p class="eyebrow">Diamond Savings</p>
         <h1>Home Dashboard</h1>
         <p class="subtitle">A quick snapshot of your money in and money out.</p>
       </div>
-      <button class="action-btn" type="button">Add Transaction</button>
+      <button class="action-btn" id="openFormBtn" type="button">Add Transaction</button>
     </header>
 
-    <!-- TRANSACTION FORM -->
-    <div class="transaction-form">
-  <h3>Add Transaction</h3>
+    <nav class="mobile-nav" aria-label="Dashboard navigation">
+      <button class="tab-btn active" data-view="overview" type="button">Overview</button>
+      <button class="tab-btn" data-view="transactions" type="button">Transactions</button>
+      <button class="tab-btn" data-view="insights" type="button">Insights</button>
+    </nav>
 
-  <label>Amount</label>
-  <input type="number" id="amount" placeholder="Enter amount" />
+    <section id="overview-view" class="view-section active">
+      <section class="metric-grid" aria-label="Overview metrics">
+        <article class="metric-card balance">
+          <h2>Current Balance</h2>
+          <p class="metric-value" id="current-balance">$0.00</p>
+        </article>
 
-  <label>Type</label>
-  <select id="type">
-    <option value="income">Income</option>
-    <option value="expense">Expense</option>
-  </select>
+        <article class="metric-card income">
+          <h2>Total Income</h2>
+          <p class="metric-value" id="total-income">$0.00</p>
+        </article>
 
-  <label>Category</label>
-  <input type="text" id="category" placeholder="e.g. Food, Travel" />
+        <article class="metric-card expenses">
+          <h2>Total Expenses</h2>
+          <p class="metric-value" id="total-expenses">$0.00</p>
+        </article>
 
-  <label>Date</label>
-  <input type="date" id="date" />
-
-  <label>Notes</label>
-  <input type="text" id="notes" placeholder="Optional notes" />
-
-<button type="submit">Add</button>
-        <button type="button" onclick="toggleForm()">Cancel</button>
-</div>
-
-
-    <!-- TRANSACTION LIST -->
-    <div class="transaction-list">
-      <h3>Transaction History</h3>
-  <input type="text" id="searchInput" placeholder="Search category..." />
-      <ul id="transactionList"></ul>
-    </div>
-
-    <!-- METRICS -->
-    <section class="metric-grid" aria-label="Overview metrics">
-
-      <article class="metric-card balance">
-        <h2>Current Balance</h2>
-        <p class="metric-value" id="current-balance">$0</p>
-      </article>
-
-      <article class="metric-card income">
-        <h2>Total Income</h2>
-        <p class="metric-value" id="total-income">$0</p>
-      </article>
-
-      <article class="metric-card expenses">
-        <h2>Total Expenses</h2>
-        <p class="metric-value" id="total-expenses">$0</p>
-      </article>
-
-      <!-- SAVINGS -->
-      <article class="metric-card savings">
-        <h2>Savings Progress</h2>
-
-        <div class="progress-row">
-          <div class="progress-track" role="img" aria-label="Savings progress">
-            <span id="savings-fill"></span>
+        <article class="metric-card savings">
+          <h2>Savings Progress</h2>
+          <div class="progress-row">
+            <div class="progress-track" role="img" aria-label="Savings progress">
+              <span id="savings-fill"></span>
+            </div>
+            <p class="progress-label" id="savings-percent">0%</p>
           </div>
-          <p class="progress-label" id="savings-percent">0%</p>
-        </div>
 
-        <p class="goal-copy">
-          Goal: <span id="goal-amount">$0</span> this month
-        </p>
+          <p class="goal-copy">Goal: <span id="goal-amount">$0.00</span> this month</p>
+          <div class="goal-section">
+            <input type="number" id="goalInput" placeholder="Set your goal" min="0" step="0.01" />
+            <button type="button" id="goalBtn">Set Goal</button>
+          </div>
+          <p id="goalMessage" class="goal-message"></p>
+        </article>
+      </section>
 
-        <!-- GOAL INPUT -->
-        <div class="goal-section">
-          <input type="number" id="goalInput" placeholder="Set your goal" />
-          <button onclick="setGoal()">Set Goal</button>
-        </div>
+      <section class="visual-grid" aria-label="Spending visuals">
+        <article class="panel">
+          <div class="panel-heading">
+            <h2>Weekly Spending Trend</h2>
+            <p>Last 7 days</p>
+          </div>
+          <ul id="weekly-list" class="weekly-list"></ul>
+        </article>
 
-        <p id="goalMessage"></p>
-      </article>
-
+        <article class="panel">
+          <div class="panel-heading">
+            <h2>Spending by Category</h2>
+            <p>This month</p>
+          </div>
+          <ul class="category-list" id="category-list"></ul>
+        </article>
+      </section>
     </section>
 
-    <!-- VISUALS -->
-    <section class="visual-grid" aria-label="Spending visuals">
+    <section id="transactions-view" class="view-section">
+      <div class="transaction-form" id="transactionForm" aria-label="Add transaction form">
+        <h3>Add Transaction</h3>
 
-      <!-- TREND -->
-      <article class="panel">
-        <div class="panel-heading">
-          <h2>Weekly Spending Trend</h2>
-          <p>Last 7 days</p>
+        <label for="amount">Amount</label>
+        <input type="number" id="amount" placeholder="Enter amount" min="0" step="0.01" />
+
+        <label for="type">Type</label>
+        <select id="type">
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+
+        <label for="category">Category</label>
+        <input type="text" id="category" placeholder="e.g. Food, Travel" />
+
+        <label for="date">Date</label>
+        <input type="date" id="date" />
+
+        <label for="notes">Notes</label>
+        <input type="text" id="notes" placeholder="Optional notes" />
+
+        <div class="form-actions">
+          <button type="button" id="saveBtn">Add</button>
+          <button type="button" id="cancelBtn" class="secondary">Cancel</button>
         </div>
+        <p id="formError" class="error-copy" aria-live="polite"></p>
+      </div>
 
-        <svg class="trend-chart" viewBox="0 0 360 180" role="img">
-          <polyline points="20,120 70,90 120,102 170,62 220,80 270,108 320,84"></polyline>
-
-          <g class="chart-axis">
-            <line x1="20" y1="150" x2="330" y2="150"></line>
-            <line x1="20" y1="20" x2="20" y2="150"></line>
-          </g>
-        </svg>
-      </article>
-
-      <!-- CATEGORY -->
-      <article class="panel">
+      <div class="transaction-list">
         <div class="panel-heading">
-          <h2>Spending by Category</h2>
-          <p>This month</p>
+          <h3>Transaction History</h3>
+          <input type="text" id="searchInput" placeholder="Search category..." />
         </div>
-
-        <ul class="category-list" id="category-list"></ul>
-      </article>
-
+        <ul id="transactionList"></ul>
+      </div>
     </section>
 
-    <!-- INSIGHTS -->
-    <section class="insights">
+    <section id="insights-view" class="view-section insights">
       <h2>Insights</h2>
-
       <div class="insight-card">
-        <p><strong>Top Spending Category:</strong> 
-          <span id="topCategory">-</span>
-        </p>
+        <p><strong>Top Spending Category:</strong> <span id="topCategory">-</span></p>
       </div>
-
       <div class="insight-card">
-        <p><strong>Income vs Expenses:</strong> 
-          <span id="incomeVsExpenses">-</span>
-        </p>
+        <p><strong>Income vs Expenses:</strong> <span id="incomeVsExpenses">-</span></p>
       </div>
-
       <div class="insight-card">
-        <p><strong>Most Frequent Type:</strong> 
-          <span id="frequentType">-</span>
-        </p>
+        <p><strong>Most Frequent Type:</strong> <span id="frequentType">-</span></p>
+      </div>
+      <div class="insight-card">
+        <p><strong>This Week vs Last Week:</strong> <span id="weekComparison">-</span></p>
       </div>
     </section>
-
   </main>
 
   <script src="script.js"></script>
