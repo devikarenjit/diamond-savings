@@ -30,6 +30,7 @@ const $ = {
   goalBtn: document.getElementById("goalBtn"),
   splashScreen: document.getElementById("splash-screen"),
   appRoot: document.querySelector(".dashboard"),
+  homeSubtitle: document.getElementById("homeSubtitle"),
   profileStatusLabel: document.getElementById("profile-status-label"),
   profileStatusCopy: document.getElementById("profile-status-copy"),
   profileBadge: document.getElementById("profileBadge"),
@@ -58,12 +59,28 @@ const $ = {
   categoryPieChart: document.getElementById("category-pie-chart"),
   transactionHistory: document.getElementById("transactionHistory"),
   homeLogoLink: document.getElementById("homeLogoLink"),
-  navDropdowns: document.querySelectorAll(".nav-dropdown")
+  navDropdowns: document.querySelectorAll(".nav-dropdown"),
+  leaderboardScore: document.getElementById("leaderboardScore"),
+  leaderboardRank: document.getElementById("leaderboardRank"),
+  topDonor: document.getElementById("topDonor"),
+  leaderboardList: document.getElementById("leaderboardList"),
+  userTier: document.getElementById("userTier"),
+  pointsEarned: document.getElementById("pointsEarned"),
+  rewardEligibility: document.getElementById("rewardEligibility"),
+  advancedInsights: document.getElementById("advancedInsights"),
+  boostStatus: document.getElementById("boostStatus"),
+  competitionStatus: document.getElementById("competitionStatus"),
+  premiumUntil: document.getElementById("premiumUntil"),
+  settingsDisplayName: document.getElementById("settingsDisplayName"),
+  settingsPlan: document.getElementById("settingsPlan"),
+  saveSettingsBtn: document.getElementById("saveSettingsBtn"),
+  settingsMessage: document.getElementById("settingsMessage")
 };
 
 
 const getDefaultProfile = () => ({
   name: "",
+  displayName: "",
   location: "",
   dependents: 0,
   familyResponsibilities: "",
@@ -74,16 +91,26 @@ const getDefaultProfile = () => ({
   donation: { cause: "", percent: 0 }
 });
 
+
+const generateCreativeAlias = () => {
+  const adjectives = ["Radiant", "Bold", "Kind", "Swift", "Shining", "Calm", "Brave", "Sparkling"];
+  const nouns = ["Diamond", "Saver", "Phoenix", "Comet", "Wave", "Star", "Trail", "Beacon"];
+  const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const code = Math.floor(100 + Math.random() * 900);
+  return `${adjective}${noun}${code}`;
+};
+
 const hasIncomeSource = (profile) =>
   [profile.income.salary, profile.income.freelance, profile.income.business, profile.income.passive].some((value) => Number(value) > 0);
 
-const isProfileComplete = (profile) => Boolean(profile.name.trim() && profile.location.trim() && hasIncomeSource(profile));
+const isProfileComplete = (profile) => Boolean(profile.name.trim() && profile.displayName.trim() && profile.location.trim() && hasIncomeSource(profile));
 
 const dataStore = {
   load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false };
+      if (!raw) return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false, premiumUnlockUntil: null, leaderboardAlias: generateCreativeAlias() };
 
       const parsed = JSON.parse(raw);
       return {
@@ -94,17 +121,19 @@ const dataStore = {
           expenses: { ...getDefaultProfile().expenses, ...(parsed.profile.expenses || {}) },
           goals: { ...getDefaultProfile().goals, ...(parsed.profile.goals || {}) },
           donation: { ...getDefaultProfile().donation, ...(parsed.profile.donation || {}) } } : getDefaultProfile(),
-        profileCompleted: Boolean(parsed.profileCompleted)
+        profileCompleted: Boolean(parsed.profileCompleted),
+        premiumUnlockUntil: parsed.premiumUnlockUntil || null,
+        leaderboardAlias: parsed.leaderboardAlias || generateCreativeAlias()
       };
     } catch {
-      return { transactions: [], monthlyGoal: 0 };
+      return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false, premiumUnlockUntil: null, leaderboardAlias: generateCreativeAlias() };
     }
   },
 
   save(state) {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ transactions: state.transactions, monthlyGoal: state.monthlyGoal, profile: state.profile, profileCompleted: state.profileCompleted })
+      JSON.stringify({ transactions: state.transactions, monthlyGoal: state.monthlyGoal, profile: state.profile, profileCompleted: state.profileCompleted, premiumUnlockUntil: state.premiumUnlockUntil, leaderboardAlias: state.leaderboardAlias })
     );
   }
 };
@@ -116,7 +145,9 @@ const state = {
   profile: initialData.profile || getDefaultProfile(),
   profileCompleted: Boolean(initialData.profileCompleted),
   editingId: null,
-  currentView: "overview"
+  currentView: "overview",
+  premiumUnlockUntil: initialData.premiumUnlockUntil || null,
+  leaderboardAlias: initialData.leaderboardAlias || generateCreativeAlias()
 };
 
 const formatters = {
@@ -258,6 +289,61 @@ const analytics = {
       netSavings,
       trackedDays: dateKeys.length
     };
+  },
+
+  localAverageIncome(location) {
+    const map = {
+      "mumbai": 55000,
+      "delhi": 50000,
+      "bangalore": 60000,
+      "chennai": 48000,
+      "abu dhabi": 15000,
+      "dubai": 18000
+    };
+
+    if (!location) return 45000;
+    const key = location.trim().toLowerCase();
+    return map[key] || 45000;
+  },
+
+  donationAmount(transactions) {
+    return transactions
+      .filter((transaction) => transaction.type === "expense" && ["donation", "charity", "help"].some((tag) => transaction.category.toLowerCase().includes(tag)))
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
+  },
+
+  leaderboardScore(profile, transactions) {
+    const totals = this.totals(transactions);
+    const netSavings = Math.max(0, totals.income - totals.expenses);
+    const averageIncome = this.localAverageIncome(profile.location);
+    const behavior = this.savingsBehaviorMetrics(transactions);
+    const donation = this.donationAmount(transactions);
+
+    const savingsComponent = averageIncome > 0 ? netSavings / averageIncome : 0;
+    const consistencyComponent = behavior.consistency / 100;
+    const impactComponent = totals.income > 0
+      ? (donation / totals.income) + ((Number(profile.donation?.percent) || 0) / 100)
+      : (Number(profile.donation?.percent) || 0) / 100;
+
+    return {
+      score: Number((savingsComponent + consistencyComponent + impactComponent).toFixed(3)),
+      donation
+    };
+  },
+
+  leaderboardEntries(state) {
+    const current = this.leaderboardScore(state.profile, state.transactions);
+    const currentUserName = state.profile.displayName?.trim() || state.leaderboardAlias || generateCreativeAlias();
+
+    const entries = [
+      { name: currentUserName, donation: current.donation, score: current.score },
+      { name: "SilentComet811", donation: 1800, score: 2.04 },
+      { name: "EmeraldWave632", donation: 1400, score: 1.88 },
+      { name: "NovaSaver459", donation: 900, score: 1.63 },
+      { name: "BrightTrail274", donation: 700, score: 1.44 }
+    ].sort((a, b) => (b.donation - a.donation) || (b.score - a.score));
+
+    return { entries, currentUserName, currentScore: current.score };
   }
 
 };
@@ -433,6 +519,17 @@ const ui = {
     if ($.savingsRate) $.savingsRate.textContent = "-";
     if ($.consistencyScore) $.consistencyScore.textContent = "-";
     if ($.savingStreak) $.savingStreak.textContent = "-";
+    if ($.leaderboardScore) $.leaderboardScore.textContent = "-";
+    if ($.leaderboardRank) $.leaderboardRank.textContent = "-";
+    if ($.topDonor) $.topDonor.textContent = "-";
+    if ($.leaderboardList) $.leaderboardList.innerHTML = "";
+    if ($.userTier) $.userTier.textContent = "-";
+    if ($.pointsEarned) $.pointsEarned.textContent = "-";
+    if ($.rewardEligibility) $.rewardEligibility.textContent = "-";
+    if ($.advancedInsights) $.advancedInsights.textContent = "-";
+    if ($.boostStatus) $.boostStatus.textContent = "-";
+    if ($.competitionStatus) $.competitionStatus.textContent = "-";
+    if ($.premiumUntil) $.premiumUntil.textContent = "-";
       return;
     }
 
@@ -466,6 +563,42 @@ const ui = {
     if ($.savingsRate) $.savingsRate.textContent = `${behavior.savingsRate.toFixed(1)}%`;
     if ($.consistencyScore) $.consistencyScore.textContent = `${behavior.consistency}/100`;
     if ($.savingStreak) $.savingStreak.textContent = `${behavior.streak} day${behavior.streak === 1 ? "" : "s"}`;
+
+    const leaderboard = analytics.leaderboardEntries(state);
+    const rank = leaderboard.entries.findIndex((entry) => entry.name === leaderboard.currentUserName) + 1;
+    if ($.leaderboardScore) $.leaderboardScore.textContent = leaderboard.currentScore.toFixed(3);
+    if ($.leaderboardRank) $.leaderboardRank.textContent = rank > 0 ? `#${rank}` : "-";
+    if ($.topDonor) $.topDonor.textContent = leaderboard.entries[0] ? `${leaderboard.entries[0].name} (${formatters.currency(leaderboard.entries[0].donation)})` : "-";
+
+    if ($.leaderboardList) {
+      $.leaderboardList.innerHTML = "";
+      leaderboard.entries.forEach((entry, index) => {
+        const item = document.createElement("li");
+        item.className = index < 3 ? `leaderboard-top top-${index + 1}` : "";
+        const badge = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : "•";
+        item.innerHTML = `<span class="lb-rank">${badge} ${index + 1}</span><span class="lb-name">${entry.name}</span><strong>${formatters.currency(entry.donation)}</strong>`;
+        $.leaderboardList.appendChild(item);
+      });
+    }
+
+    const reachedStreakUnlock = behavior.streak >= 7;
+    if (reachedStreakUnlock && !hasActivePremiumAccess()) {
+      const unlock = new Date();
+      unlock.setDate(unlock.getDate() + 7);
+      state.premiumUnlockUntil = unlock.toISOString();
+      transactionService.persist();
+    }
+
+    const isPremium = hasActivePremiumAccess();
+    const points = Math.round((leaderboard.currentScore * 100) + (analytics.donationAmount(state.transactions) / 10));
+
+    if ($.userTier) $.userTier.textContent = isPremium ? "Premium" : "Free";
+    if ($.pointsEarned) $.pointsEarned.textContent = `${points} pts`;
+    if ($.rewardEligibility) $.rewardEligibility.textContent = isPremium ? "Eligible (Netflix / Amazon rewards)" : "Not eligible yet";
+    if ($.advancedInsights) $.advancedInsights.textContent = isPremium ? `Savings ratio ${behavior.savingsRate.toFixed(1)}%, consistency ${behavior.consistency}/100` : "Locked for Free users";
+    if ($.boostStatus) $.boostStatus.textContent = isPremium ? "Boost active in leaderboard" : "Standard visibility";
+    if ($.competitionStatus) $.competitionStatus.textContent = isPremium ? "Special competitions unlocked" : "Open competition (basic)";
+    if ($.premiumUntil) $.premiumUntil.textContent = state.profile.plan === "premium" ? "Plan-based Premium" : (state.premiumUnlockUntil ? new Date(state.premiumUnlockUntil).toLocaleDateString("en-US") : "Not unlocked");
   },
 
 
@@ -488,6 +621,8 @@ const ui = {
     $.profileDependents.value = p.dependents;
     $.profileFamilyResponsibilities.value = p.familyResponsibilities;
     $.profilePlan.value = p.plan;
+    if ($.settingsDisplayName) $.settingsDisplayName.value = p.displayName;
+    if ($.settingsPlan) $.settingsPlan.value = p.plan;
     $.incomeSalary.value = p.income.salary;
     $.incomeFreelance.value = p.income.freelance;
     $.incomeBusiness.value = p.income.business;
@@ -511,6 +646,7 @@ const ui = {
       .querySelectorAll(`.tab-btn[data-view='${view}']`)
       .forEach((button) => button.classList.add("active"));
     state.currentView = view;
+    if ($.homeSubtitle) $.homeSubtitle.style.display = view === "overview" ? "block" : "none";
   },
 
   renderAll() {
@@ -589,6 +725,10 @@ function handleSetGoal() {
   transactionService.persist();
   $.goalAmount.textContent = formatters.currency(state.monthlyGoal);
   state.profileCompleted = isProfileComplete(state.profile);
+  if (!state.leaderboardAlias) {
+    state.leaderboardAlias = generateCreativeAlias();
+    transactionService.persist();
+  }
   $.goalInput.value = "";
   ui.renderDashboard();
 }
@@ -597,6 +737,7 @@ function handleSetGoal() {
 function getProfileFormValues() {
   return {
     name: $.profileName.value.trim(),
+    displayName: state.profile.displayName || "",
     location: $.profileLocation.value.trim(),
     dependents: Number($.profileDependents.value) || 0,
     familyResponsibilities: $.profileFamilyResponsibilities.value.trim(),
@@ -625,8 +766,8 @@ function getProfileFormValues() {
 }
 
 function validateProfile(profile) {
-  if (!profile.name || !profile.location) {
-    return "Name and location are required.";
+  if (!profile.name || !profile.displayName || !profile.location) {
+    return "Name and location are required. Set display name in Settings.";
   }
 
   if (!hasIncomeSource(profile)) {
@@ -656,6 +797,25 @@ function handleSaveProfile() {
   ui.renderProfileStatus();
 }
 
+
+
+function handleSaveSettings() {
+  if (!$.settingsPlan) return;
+  state.profile.displayName = $.settingsDisplayName?.value.trim() || state.profile.displayName;
+  state.profile.plan = $.settingsPlan.value;
+  state.profileCompleted = isProfileComplete(state.profile);
+  transactionService.persist();
+  if ($.profilePlan) $.profilePlan.value = state.profile.plan;
+  if ($.settingsMessage) $.settingsMessage.textContent = `Settings saved. Plan: ${state.profile.plan === "premium" ? "Premium" : "Free"}.`;
+  ui.renderAll();
+}
+
+function hasActivePremiumAccess() {
+  if (state.profile.plan === "premium") return true;
+  if (!state.premiumUnlockUntil) return false;
+  return new Date(state.premiumUnlockUntil).getTime() > Date.now();
+}
+
 function bindEvents() {
   if ($.openFormBtn) {
     $.openFormBtn.addEventListener("click", () => {
@@ -669,6 +829,7 @@ function bindEvents() {
   $.goalBtn.addEventListener("click", handleSetGoal);
   $.searchInput.addEventListener("input", () => ui.renderTransactions());
   if ($.saveProfileBtn) $.saveProfileBtn.addEventListener("click", handleSaveProfile);
+  if ($.saveSettingsBtn) $.saveSettingsBtn.addEventListener("click", handleSaveSettings);
 
   $.transactionList.addEventListener("click", (event) => {
     const editId = event.target.getAttribute("data-edit");
@@ -682,7 +843,14 @@ function bindEvents() {
   });
 
   document.querySelectorAll(".tab-btn").forEach((button) => {
-    button.addEventListener("click", () => ui.switchView(button.dataset.view));
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      const target = button.dataset.view;
+      if (!target) return;
+      ui.switchView(target);
+      $.navDropdowns.forEach((dropdown) => dropdown.classList.remove("open"));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
   });
 
   if ($.homeLogoLink) {
@@ -695,13 +863,14 @@ function bindEvents() {
 
 
   $.navDropdowns.forEach((dropdown) => {
-    const trigger = dropdown.querySelector('.tab-btn[data-view="transactions"]');
+    const trigger = dropdown.querySelector('.tab-btn');
     if (!trigger) return;
 
     trigger.addEventListener("click", (event) => {
       if (window.innerWidth <= 768) {
         event.preventDefault();
-        ui.switchView("transactions");
+        const target = trigger.dataset.view;
+        if (target) ui.switchView(target);
         dropdown.classList.toggle("open");
       }
     });
@@ -728,6 +897,14 @@ function bindEvents() {
         $.transactionHistory?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
+      if (button.dataset.action === "jump-ranking") {
+        document.getElementById("leaderboard-ranking")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      if (button.dataset.action === "jump-summary") {
+        document.getElementById("leaderboard-summary")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
       $.navDropdowns.forEach((dropdown) => dropdown.classList.remove("open"));
     });
   });
@@ -747,7 +924,13 @@ function initialize() {
   $.date.value = getToday();
   $.goalAmount.textContent = formatters.currency(state.monthlyGoal);
   state.profileCompleted = isProfileComplete(state.profile);
+  if (!state.leaderboardAlias) {
+    state.leaderboardAlias = generateCreativeAlias();
+    transactionService.persist();
+  }
   bindEvents();
+  ui.switchView("overview");
+  if ($.settingsMessage) $.settingsMessage.textContent = "";
   ui.renderAll();
 }
 

@@ -121,30 +121,35 @@ button.danger {
 .mobile-nav {
 
   display: none;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   margin: 0;
 }
 
 .tab-btn {
-  background: #e9efff;
+  background: transparent;
   color: #36528e;
-  border-radius: 999px;
+  border-radius: 0;
   padding: 8px;
 }
 
 .tab-btn.active {
-  background: #e9efff;
+  background: transparent;
   color: #36528e;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .tab-btn:hover,
 .tab-btn:focus-visible {
-  background: var(--blue);
-  color: white;
+  background: transparent;
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
-.view-section { display: block; }
+.view-section { display: none; }
+.view-section.active { display: block; }
 
 .metric-grid,
 .visual-grid {
@@ -289,8 +294,6 @@ select {
   .main-nav { display: flex; flex-wrap: nowrap; gap: 6px; }
   .main-nav .tab-btn { font-size: 0.82rem; padding: 7px 10px; }
   .mobile-nav { display: none; }
-  .view-section { display: none; }
-  .view-section.active { display: block; }
   .metric-grid { grid-template-columns: 1fr; }
   .goal-section,
   .form-actions,
@@ -403,3 +406,41 @@ select {
     overflow: hidden;
   }
 }
+
+
+
+.leaderboard-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: #2d3a59;
+  display: grid;
+  gap: 6px;
+}
+
+
+.leaderboard-decor h2 {
+  margin-top: 0;
+  color: #1f4fb5;
+  letter-spacing: 0.2px;
+}
+
+.leaderboard-decor .insight-card {
+  border: 1px solid #e4ebff;
+}
+
+.leaderboard-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f7f9ff;
+}
+
+.lb-rank { font-weight: 700; color: #36528e; }
+.lb-name { font-weight: 600; color: #1f2a44; }
+
+.leaderboard-top.top-1 { background: linear-gradient(90deg, #fff7dd, #fffdf2); }
+.leaderboard-top.top-2 { background: linear-gradient(90deg, #f0f4ff, #fafcff); }
+.leaderboard-top.top-3 { background: linear-gradient(90deg, #fff1e8, #fff8f3); }
