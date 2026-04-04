@@ -17,6 +17,7 @@ body {
   font-family: Inter, "Segoe UI", sans-serif;
   background: linear-gradient(180deg, #f7f8fd 0%, #f1f4fc 100%);
   color: var(--text);
+  overflow-x: hidden;
 }
 
 .splash-screen {
@@ -46,22 +47,37 @@ body {
 }
 
 .dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  display: grid;
+  gap: 10px;
   margin-bottom: 16px;
 }
 
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+
+.home-logo-link {
+  display: inline-block;
+  width: fit-content;
+}
 
 .brand-block {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
 }
 
 .brand-logo {
-  width: 120px;
+  width: 72px;
   max-width: 100%;
   height: auto;
   margin-bottom: 6px;
@@ -92,11 +108,14 @@ button.danger {
 .main-nav {
   display: flex;
   gap: 10px;
-  margin: 0 0 12px;
+  margin: 0;
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
 .main-nav .tab-btn {
-  padding: 10px 16px;
+  padding: 8px 12px;
+  font-size: 0.92rem;
 }
 
 .mobile-nav {
@@ -104,7 +123,7 @@ button.danger {
   display: none;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin: 0 0 12px;
+  margin: 0;
 }
 
 .tab-btn {
@@ -115,6 +134,12 @@ button.danger {
 }
 
 .tab-btn.active {
+  background: #e9efff;
+  color: #36528e;
+}
+
+.tab-btn:hover,
+.tab-btn:focus-visible {
   background: var(--blue);
   color: white;
 }
@@ -128,7 +153,7 @@ button.danger {
 }
 
 .metric-grid {
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  grid-template-columns: repeat(5, minmax(170px, 1fr));
   margin-bottom: 14px;
 }
 
@@ -244,14 +269,26 @@ select {
 
 @media (max-width: 940px) {
   .metric-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+  .profile-grid { grid-template-columns: 1fr; }
   .visual-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
+  .nav-dropdown .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 180px;
+    max-width: 88vw;
+    margin-top: 0;
+  }
   .dashboard { padding: 14px; }
-  .dashboard-header { flex-direction: column; }
-  .main-nav { display: none; }
-  .mobile-nav { display: grid; }
+  .dashboard-header { gap: 8px; }
+  .header-top { align-items: center; }
+  .header-right { width: auto; max-width: calc(100% - 84px); align-items: center; overflow: visible; }
+  .main-nav { display: flex; flex-wrap: nowrap; gap: 6px; }
+  .main-nav .tab-btn { font-size: 0.82rem; padding: 7px 10px; }
+  .mobile-nav { display: none; }
   .view-section { display: none; }
   .view-section.active { display: block; }
   .metric-grid { grid-template-columns: 1fr; }
@@ -260,5 +297,109 @@ select {
   .item-actions { flex-direction: column; }
   .action-btn,
   button { width: 100%; }
+  .main-nav .tab-btn,
+  .main-nav .dropdown-item { width: auto; max-width: 100%; }
+  .nav-dropdown { width: auto; }
   .transaction-item { flex-direction: column; }
+}
+
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.profile-view .panel {
+  margin-top: 8px;
+}
+
+#profileBadge {
+  margin: 0;
+  font-weight: 600;
+  color: var(--blue);
+}
+
+.profile-status .metric-value {
+  font-size: 1.2rem;
+  color: #5b5f6d;
+}
+
+
+
+.category-pie-chart {
+  display: grid;
+  place-items: center;
+  margin: 8px 0 12px;
+}
+
+.category-pie-chart svg {
+  width: 170px;
+  height: 170px;
+}
+
+.category-list li {
+  grid-template-columns: 16px 1fr auto;
+}
+
+.category-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+
+.nav-dropdown {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: #fff;
+  border: 1px solid #d8e1f3;
+  border-radius: 10px;
+  padding: 6px;
+  min-width: 210px;
+  box-shadow: 0 6px 18px rgba(26, 43, 84, 0.12);
+  display: none;
+  z-index: 20;
+}
+
+.nav-dropdown:hover .dropdown-menu,
+.nav-dropdown:focus-within .dropdown-menu,
+.nav-dropdown.open .dropdown-menu {
+  display: grid;
+  gap: 6px;
+}
+
+.dropdown-item {
+  width: 100%;
+  text-align: left;
+  background: #f5f7ff;
+  color: #1e2433;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus-visible {
+  background: #1f4fb5;
+  color: #ffffff;
+}
+
+
+
+/* Mobile overflow fixes */
+@media (max-width: 768px) {
+  .profile-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .profile-view .panel,
+  .transaction-list,
+  .transaction-form {
+    overflow: hidden;
+  }
 }

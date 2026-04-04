@@ -13,28 +13,42 @@
 
   <main class="dashboard app-hidden" aria-label="Diamond Savings Home Dashboard">
     <header class="dashboard-header">
-      <div class="brand-block">
-        <img src="Diamond Savings piggy bank logo.png" alt="Diamond Savings logo" class="brand-logo" onerror="this.onerror=null;this.src='logo.svg';" />
-        <h1>Home Dashboard</h1>
-        <p class="subtitle">A quick snapshot of your money in and money out.</p>
+      <div class="header-top">
+        <div class="brand-block">
+          <a href="#" id="homeLogoLink" class="home-logo-link" aria-label="Go to home dashboard"><img src="Diamond Savings piggy bank logo.png" alt="Diamond Savings logo" class="brand-logo" onerror="this.onerror=null;this.src='logo.svg';" /></a>
+        </div>
+
+        <div class="header-right">
+          <nav class="main-nav" aria-label="Primary dashboard navigation">
+            <div class="nav-dropdown">
+              <button class="tab-btn active" data-view="transactions" type="button">Transactions</button>
+              <div class="dropdown-menu" aria-label="Transactions menu">
+                <button class="dropdown-item" data-view="transactions" data-action="open-form" type="button">Add Transaction</button>
+                <button class="dropdown-item" data-view="transactions" data-action="show-history" type="button">Transaction History</button>
+              </div>
+            </div>
+            <button class="tab-btn" data-view="profile" type="button">Profile</button>
+            <button class="tab-btn" data-view="leaderboard" type="button">Leaderboard</button>
+          </nav>
+        </div>
       </div>
-      <button class="action-btn" id="openFormBtn" type="button">Add Transaction</button>
+      <h1>Home Dashboard</h1>
+      <p class="subtitle">A quick snapshot of your money in and money out.</p>
     </header>
 
-
-    <nav class="main-nav" aria-label="Primary dashboard navigation">
-      <button class="tab-btn active" data-view="overview" type="button">Overview</button>
-      <button class="tab-btn" data-view="transactions" type="button">Transactions</button>
-      <button class="tab-btn" data-view="insights" type="button">Insights</button>
-    </nav>
-
     <nav class="mobile-nav" aria-label="Dashboard navigation">
-      <button class="tab-btn active" data-view="overview" type="button">Overview</button>
-      <button class="tab-btn" data-view="transactions" type="button">Transactions</button>
-      <button class="tab-btn" data-view="insights" type="button">Insights</button>
+      <div class="nav-dropdown">
+        <button class="tab-btn active" data-view="transactions" type="button">Transactions</button>
+        <div class="dropdown-menu" aria-label="Transactions menu">
+          <button class="dropdown-item" data-view="transactions" data-action="open-form" type="button">Add Transaction</button>
+          <button class="dropdown-item" data-view="transactions" data-action="show-history" type="button">Transaction History</button>
+        </div>
+      </div>
+      <button class="tab-btn" data-view="profile" type="button">Profile</button>
+      <button class="tab-btn" data-view="leaderboard" type="button">Leaderboard</button>
     </nav>
 
-    <section id="overview-view" class="view-section active">
+    <section id="overview-view" class="view-section">
       <section class="metric-grid" aria-label="Overview metrics">
         <article class="metric-card balance">
           <h2>Current Balance</h2>
@@ -67,6 +81,12 @@
           </div>
           <p id="goalMessage" class="goal-message"></p>
         </article>
+
+        <article class="metric-card profile-status">
+          <h2>Profile Status</h2>
+          <p class="metric-value" id="profile-status-label">Incomplete</p>
+          <p class="goal-copy" id="profile-status-copy">Complete your profile to unlock leaderboard scoring.</p>
+        </article>
       </section>
 
       <section class="visual-grid" aria-label="Spending visuals">
@@ -83,12 +103,13 @@
             <h2>Spending by Category</h2>
             <p>This month</p>
           </div>
+          <div id="category-pie-chart" class="category-pie-chart" aria-label="Category pie chart"></div>
           <ul class="category-list" id="category-list"></ul>
         </article>
       </section>
     </section>
 
-    <section id="transactions-view" class="view-section">
+    <section id="transactions-view" class="view-section active">
       <div class="transaction-form" id="transactionForm" aria-label="Add transaction form">
         <h3>Add Transaction</h3>
 
@@ -117,7 +138,7 @@
         <p id="formError" class="error-copy" aria-live="polite"></p>
       </div>
 
-      <div class="transaction-list">
+      <div class="transaction-list" id="transactionHistory">
         <div class="panel-heading">
           <h3>Transaction History</h3>
           <input type="text" id="searchInput" placeholder="Search category..." />
@@ -126,8 +147,8 @@
       </div>
     </section>
 
-    <section id="insights-view" class="view-section insights">
-      <h2>Insights</h2>
+    <section id="leaderboard-view" class="view-section insights">
+      <h2>Leaderboard</h2>
       <div class="insight-card">
         <p><strong>Top Spending Category:</strong> <span id="topCategory">-</span></p>
       </div>
@@ -140,6 +161,96 @@
       <div class="insight-card">
         <p><strong>This Week vs Last Week:</strong> <span id="weekComparison">-</span></p>
       </div>
+
+      <div class="insight-card">
+        <p><strong>Savings Rate:</strong> <span id="savingsRate">-</span></p>
+      </div>
+      <div class="insight-card">
+        <p><strong>Consistency Score:</strong> <span id="consistencyScore">-</span></p>
+      </div>
+      <div class="insight-card">
+        <p><strong>Saving Streak:</strong> <span id="savingStreak">-</span></p>
+      </div>
+    </section>
+
+    <section id="profile-view" class="view-section profile-view">
+      <article class="panel">
+        <div class="panel-heading">
+          <h2>Profile Setup</h2>
+          <p id="profileBadge">Incomplete</p>
+        </div>
+
+        <div class="profile-grid">
+          <div>
+            <label for="profileName">Name</label>
+            <input type="text" id="profileName" placeholder="Your full name" />
+
+            <label for="profileLocation">Location</label>
+            <input type="text" id="profileLocation" placeholder="City / Region" />
+
+            <label for="profileDependents">Number of dependents</label>
+            <input type="number" id="profileDependents" min="0" step="1" placeholder="0" />
+
+            <label for="profileFamilyResponsibilities">Family responsibilities</label>
+            <input type="text" id="profileFamilyResponsibilities" placeholder="Parents, siblings, children..." />
+
+            <label for="profilePlan">Plan type</label>
+            <select id="profilePlan">
+              <option value="free">Free</option>
+              <option value="premium">Premium</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="incomeSalary">Salary income (monthly)</label>
+            <input type="number" id="incomeSalary" min="0" step="0.01" placeholder="0" />
+
+            <label for="incomeFreelance">Freelance income</label>
+            <input type="number" id="incomeFreelance" min="0" step="0.01" placeholder="0" />
+
+            <label for="incomeBusiness">Business income</label>
+            <input type="number" id="incomeBusiness" min="0" step="0.01" placeholder="0" />
+
+            <label for="incomePassive">Passive income</label>
+            <input type="number" id="incomePassive" min="0" step="0.01" placeholder="0" />
+          </div>
+        </div>
+
+        <div class="profile-grid">
+          <div>
+            <label for="expenseHousing">Rent / Housing</label>
+            <input type="number" id="expenseHousing" min="0" step="0.01" placeholder="0" />
+
+            <label for="expenseFood">Food</label>
+            <input type="number" id="expenseFood" min="0" step="0.01" placeholder="0" />
+
+            <label for="expenseTransport">Transport</label>
+            <input type="number" id="expenseTransport" min="0" step="0.01" placeholder="0" />
+
+            <label for="expenseUtilities">Utilities</label>
+            <input type="number" id="expenseUtilities" min="0" step="0.01" placeholder="0" />
+          </div>
+
+          <div>
+            <label for="goalShortTerm">Short-term goals</label>
+            <input type="text" id="goalShortTerm" placeholder="Netflix, gadget..." />
+
+            <label for="goalLongTerm">Long-term goals</label>
+            <input type="text" id="goalLongTerm" placeholder="Education, savings, insurance" />
+
+            <label for="donationCause">Donation cause</label>
+            <input type="text" id="donationCause" placeholder="Education, Animals..." />
+
+            <label for="donationPercent">Donation willingness %</label>
+            <input type="number" id="donationPercent" min="0" max="100" step="0.01" placeholder="0" />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" id="saveProfileBtn">Save Profile</button>
+        </div>
+        <p id="profileError" class="error-copy" aria-live="polite"></p>
+      </article>
     </section>
   </main>
 
