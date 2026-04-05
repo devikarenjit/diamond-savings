@@ -107,15 +107,15 @@ button.danger {
 
 .main-nav {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   margin: 0;
   flex-wrap: nowrap;
   align-items: center;
 }
 
 .main-nav .tab-btn {
-  padding: 8px 12px;
-  font-size: 0.92rem;
+  padding: 6px 9px;
+  font-size: 0.88rem;
 }
 
 .mobile-nav {
@@ -289,10 +289,11 @@ select {
   }
   .dashboard { padding: 14px; }
   .dashboard-header { gap: 8px; }
-  .header-top { align-items: center; }
-  .header-right { width: auto; max-width: calc(100% - 84px); align-items: center; overflow: visible; }
-  .main-nav { display: flex; flex-wrap: nowrap; gap: 6px; }
-  .main-nav .tab-btn { font-size: 0.82rem; padding: 7px 10px; }
+  .header-top { flex-direction: row; align-items: center; gap: 8px; }
+  .header-right { flex: 1; min-width: 0; align-items: center; overflow-x: auto; }
+  .main-nav { display: flex; flex-wrap: nowrap; gap: 4px; width: max-content; margin-left: auto; }
+  .main-nav .tab-btn { font-size: 0.8rem; padding: 6px 8px; white-space: nowrap; }
+  .main-nav .nav-dropdown { width: auto; }
   .mobile-nav { display: none; }
   .metric-grid { grid-template-columns: 1fr; }
   .goal-section,
@@ -302,6 +303,7 @@ select {
   button { width: 100%; }
   .main-nav .tab-btn,
   .main-nav .dropdown-item { width: auto; max-width: 100%; }
+  .main-nav button { width: auto; }
   .nav-dropdown { width: auto; }
   .transaction-item { flex-direction: column; }
 }
@@ -444,3 +446,21 @@ select {
 .leaderboard-top.top-1 { background: linear-gradient(90deg, #fff7dd, #fffdf2); }
 .leaderboard-top.top-2 { background: linear-gradient(90deg, #f0f4ff, #fafcff); }
 .leaderboard-top.top-3 { background: linear-gradient(90deg, #fff1e8, #fff8f3); }
+
+.leaderboard-current {
+  background: linear-gradient(90deg, #e7f0ff, #f4f8ff);
+  border: 1px solid #c8dbff;
+}
+
+
+.leaderboard-decor #leaderboard-summary {
+  margin-top: 16px;
+}
+
+.nearby-ranks-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  color: #2d3a59;
+}

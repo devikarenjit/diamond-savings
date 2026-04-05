@@ -31,6 +31,7 @@ const $ = {
   splashScreen: document.getElementById("splash-screen"),
   appRoot: document.querySelector(".dashboard"),
   homeSubtitle: document.getElementById("homeSubtitle"),
+  pageTitle: document.getElementById("pageTitle"),
   profileStatusLabel: document.getElementById("profile-status-label"),
   profileStatusCopy: document.getElementById("profile-status-copy"),
   profileBadge: document.getElementById("profileBadge"),
@@ -40,7 +41,6 @@ const $ = {
   profileLocation: document.getElementById("profileLocation"),
   profileDependents: document.getElementById("profileDependents"),
   profileFamilyResponsibilities: document.getElementById("profileFamilyResponsibilities"),
-  profilePlan: document.getElementById("profilePlan"),
   incomeSalary: document.getElementById("incomeSalary"),
   incomeFreelance: document.getElementById("incomeFreelance"),
   incomeBusiness: document.getElementById("incomeBusiness"),
@@ -64,6 +64,7 @@ const $ = {
   leaderboardRank: document.getElementById("leaderboardRank"),
   topDonor: document.getElementById("topDonor"),
   leaderboardList: document.getElementById("leaderboardList"),
+  nearbyRanks: document.getElementById("nearbyRanks"),
   userTier: document.getElementById("userTier"),
   pointsEarned: document.getElementById("pointsEarned"),
   rewardEligibility: document.getElementById("rewardEligibility"),
@@ -110,7 +111,7 @@ const dataStore = {
   load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false, premiumUnlockUntil: null, leaderboardAlias: generateCreativeAlias() };
+      if (!raw) return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false, premiumUnlockUntil: null, leaderboardAlias: generateCreativeAlias(), donationLastProcessedMonth: null };
 
       const parsed = JSON.parse(raw);
       return {
@@ -123,17 +124,18 @@ const dataStore = {
           donation: { ...getDefaultProfile().donation, ...(parsed.profile.donation || {}) } } : getDefaultProfile(),
         profileCompleted: Boolean(parsed.profileCompleted),
         premiumUnlockUntil: parsed.premiumUnlockUntil || null,
-        leaderboardAlias: parsed.leaderboardAlias || generateCreativeAlias()
+        leaderboardAlias: parsed.leaderboardAlias || generateCreativeAlias(),
+        donationLastProcessedMonth: parsed.donationLastProcessedMonth || null
       };
     } catch {
-      return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false, premiumUnlockUntil: null, leaderboardAlias: generateCreativeAlias() };
+      return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false, premiumUnlockUntil: null, leaderboardAlias: generateCreativeAlias(), donationLastProcessedMonth: null };
     }
   },
 
   save(state) {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ transactions: state.transactions, monthlyGoal: state.monthlyGoal, profile: state.profile, profileCompleted: state.profileCompleted, premiumUnlockUntil: state.premiumUnlockUntil, leaderboardAlias: state.leaderboardAlias })
+      JSON.stringify({ transactions: state.transactions, monthlyGoal: state.monthlyGoal, profile: state.profile, profileCompleted: state.profileCompleted, premiumUnlockUntil: state.premiumUnlockUntil, leaderboardAlias: state.leaderboardAlias, donationLastProcessedMonth: state.donationLastProcessedMonth })
     );
   }
 };
@@ -147,7 +149,8 @@ const state = {
   editingId: null,
   currentView: "overview",
   premiumUnlockUntil: initialData.premiumUnlockUntil || null,
-  leaderboardAlias: initialData.leaderboardAlias || generateCreativeAlias()
+  leaderboardAlias: initialData.leaderboardAlias || generateCreativeAlias(),
+  donationLastProcessedMonth: initialData.donationLastProcessedMonth || null
 };
 
 const formatters = {
@@ -574,11 +577,41 @@ const ui = {
       $.leaderboardList.innerHTML = "";
       leaderboard.entries.forEach((entry, index) => {
         const item = document.createElement("li");
-        item.className = index < 3 ? `leaderboard-top top-${index + 1}` : "";
+        item.className = entry.name === leaderboard.currentUserName ? "leaderboard-current" : "";
         const badge = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : "•";
         item.innerHTML = `<span class="lb-rank">${badge} ${index + 1}</span><span class="lb-name">${entry.name}</span><strong>${formatters.currency(entry.donation)}</strong>`;
         $.leaderboardList.appendChild(item);
       });
+    }
+
+    if ($.nearbyRanks) {
+      $.nearbyRanks.innerHTML = "";
+      const currentIndex = leaderboard.entries.findIndex((entry) => entry.name === leaderboard.currentUserName);
+      const currentPoints = Math.round((leaderboard.currentScore * 100) + (analytics.donationAmount(state.transactions) / 10));
+
+      const toPoints = (entry) => Math.round((Number(entry.score || 0) * 100) + (Number(entry.donation || 0) / 10));
+      const prevEntry = currentIndex > 0 ? leaderboard.entries[currentIndex - 1] : null;
+      const nextEntry = currentIndex >= 0 && currentIndex < leaderboard.entries.length - 1 ? leaderboard.entries[currentIndex + 1] : null;
+
+      if (prevEntry) {
+        const diff = Math.max(0, toPoints(prevEntry) - currentPoints);
+        const item = document.createElement("li");
+        item.textContent = `#${currentIndex} → +${diff} points ahead`;
+        $.nearbyRanks.appendChild(item);
+      }
+
+      if (nextEntry) {
+        const diff = Math.max(0, currentPoints - toPoints(nextEntry));
+        const item = document.createElement("li");
+        item.textContent = `#${currentIndex + 2} → -${diff} points behind`;
+        $.nearbyRanks.appendChild(item);
+      }
+
+      if (!prevEntry && !nextEntry) {
+        const item = document.createElement("li");
+        item.textContent = "No adjacent ranks available yet.";
+        $.nearbyRanks.appendChild(item);
+      }
     }
 
     const reachedStreakUnlock = behavior.streak >= 7;
@@ -620,7 +653,6 @@ const ui = {
     $.profileLocation.value = p.location;
     $.profileDependents.value = p.dependents;
     $.profileFamilyResponsibilities.value = p.familyResponsibilities;
-    $.profilePlan.value = p.plan;
     if ($.settingsDisplayName) $.settingsDisplayName.value = p.displayName;
     if ($.settingsPlan) $.settingsPlan.value = p.plan;
     $.incomeSalary.value = p.income.salary;
@@ -647,6 +679,16 @@ const ui = {
       .forEach((button) => button.classList.add("active"));
     state.currentView = view;
     if ($.homeSubtitle) $.homeSubtitle.style.display = view === "overview" ? "block" : "none";
+    if ($.pageTitle) {
+      const labels = {
+        overview: "Dashboard",
+        transactions: "Transactions",
+        leaderboard: "Leaderboard",
+        settings: "Settings",
+        profile: "Profile"
+      };
+      $.pageTitle.textContent = labels[view] || "Dashboard";
+    }
   },
 
   renderAll() {
@@ -741,7 +783,7 @@ function getProfileFormValues() {
     location: $.profileLocation.value.trim(),
     dependents: Number($.profileDependents.value) || 0,
     familyResponsibilities: $.profileFamilyResponsibilities.value.trim(),
-    plan: $.profilePlan.value,
+    plan: state.profile.plan,
     income: {
       salary: Number($.incomeSalary.value) || 0,
       freelance: Number($.incomeFreelance.value) || 0,
@@ -805,9 +847,40 @@ function handleSaveSettings() {
   state.profile.plan = $.settingsPlan.value;
   state.profileCompleted = isProfileComplete(state.profile);
   transactionService.persist();
-  if ($.profilePlan) $.profilePlan.value = state.profile.plan;
   if ($.settingsMessage) $.settingsMessage.textContent = `Settings saved. Plan: ${state.profile.plan === "premium" ? "Premium" : "Free"}.`;
   ui.renderAll();
+}
+
+
+function getCurrentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function processMonthlyDonation() {
+  const percent = Number(state.profile.donation?.percent) || 0;
+  if (percent <= 0) return;
+
+  const monthKey = getCurrentMonthKey();
+  if (state.donationLastProcessedMonth === monthKey) return;
+
+  const income = state.profile.income || {};
+  const monthlyIncome = Number(income.salary || 0) + Number(income.freelance || 0) + Number(income.business || 0) + Number(income.passive || 0);
+  const donationAmount = Number(((monthlyIncome * percent) / 100).toFixed(2));
+
+  if (donationAmount <= 0) return;
+
+  state.transactions.push({
+    id: Date.now(),
+    amount: donationAmount,
+    type: "expense",
+    category: "Donation",
+    date: getToday(),
+    notes: "Auto monthly donation"
+  });
+
+  state.donationLastProcessedMonth = monthKey;
+  transactionService.persist();
 }
 
 function hasActivePremiumAccess() {
@@ -929,6 +1002,7 @@ function initialize() {
     transactionService.persist();
   }
   bindEvents();
+  processMonthlyDonation();
   ui.switchView("overview");
   if ($.settingsMessage) $.settingsMessage.textContent = "";
   ui.renderAll();
