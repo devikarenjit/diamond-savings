@@ -525,3 +525,9 @@ body.dark-mode .subscription-usp {
 .insight-card strong {
   color: #dce8ff;
 }
+
+#netflixProgressBar,
+#netflixProgressText {
+  font-family: "Courier New", monospace;
+  color: #f5f8ff;
+}

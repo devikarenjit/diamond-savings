@@ -86,7 +86,16 @@ const $ = {
   autoDonateToggle: document.getElementById("autoDonateToggle"),
   darkModeToggle: document.getElementById("darkModeToggle"),
   saveSettingsBtn: document.getElementById("saveSettingsBtn"),
-  settingsMessage: document.getElementById("settingsMessage")
+  settingsMessage: document.getElementById("settingsMessage"),
+  netflixProgressBar: document.getElementById("netflixProgressBar"),
+  netflixProgressText: document.getElementById("netflixProgressText"),
+  donationProofAmount: document.getElementById("donationProofAmount"),
+  donationProofPlatform: document.getElementById("donationProofPlatform"),
+  donationProofType: document.getElementById("donationProofType"),
+  donationProofData: document.getElementById("donationProofData"),
+  submitDonationProofBtn: document.getElementById("submitDonationProofBtn"),
+  proofStatusMessage: document.getElementById("proofStatusMessage"),
+  donationProofList: document.getElementById("donationProofList")
 };
 
 
@@ -123,7 +132,7 @@ const dataStore = {
   load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false, premiumUnlockUntil: null, leaderboardAlias: generateCreativeAlias(), donationLastProcessedMonth: null };
+      if (!raw) return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false, premiumUnlockUntil: null, leaderboardAlias: generateCreativeAlias(), donationLastProcessedMonth: null, proofs: [] };
 
       const parsed = JSON.parse(raw);
       return {
@@ -138,17 +147,18 @@ const dataStore = {
         profileCompleted: Boolean(parsed.profileCompleted),
         premiumUnlockUntil: parsed.premiumUnlockUntil || null,
         leaderboardAlias: parsed.leaderboardAlias || generateCreativeAlias(),
-        donationLastProcessedMonth: parsed.donationLastProcessedMonth || null
+        donationLastProcessedMonth: parsed.donationLastProcessedMonth || null,
+        proofs: Array.isArray(parsed.proofs) ? parsed.proofs : []
       };
     } catch {
-      return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false, premiumUnlockUntil: null, leaderboardAlias: generateCreativeAlias(), donationLastProcessedMonth: null };
+      return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false, premiumUnlockUntil: null, leaderboardAlias: generateCreativeAlias(), donationLastProcessedMonth: null, proofs: [] };
     }
   },
 
   save(state) {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ transactions: state.transactions, monthlyGoal: state.monthlyGoal, profile: state.profile, profileCompleted: state.profileCompleted, premiumUnlockUntil: state.premiumUnlockUntil, leaderboardAlias: state.leaderboardAlias, donationLastProcessedMonth: state.donationLastProcessedMonth })
+      JSON.stringify({ transactions: state.transactions, monthlyGoal: state.monthlyGoal, profile: state.profile, profileCompleted: state.profileCompleted, premiumUnlockUntil: state.premiumUnlockUntil, leaderboardAlias: state.leaderboardAlias, donationLastProcessedMonth: state.donationLastProcessedMonth, proofs: state.proofs })
     );
   }
 };
@@ -163,7 +173,8 @@ const state = {
   currentView: "overview",
   premiumUnlockUntil: initialData.premiumUnlockUntil || null,
   leaderboardAlias: initialData.leaderboardAlias || generateCreativeAlias(),
-  donationLastProcessedMonth: initialData.donationLastProcessedMonth || null
+  donationLastProcessedMonth: initialData.donationLastProcessedMonth || null,
+  proofs: Array.isArray(initialData.proofs) ? initialData.proofs : []
 };
 
 const formatters = {
@@ -349,6 +360,14 @@ const analytics = {
     }
 
     return streak;
+  },
+  donationProofTotals(proofs) {
+    return (proofs || []).reduce((acc, proof) => {
+      const amount = Number(proof.amount || 0);
+      if (proof.status === "verified") acc.verified += amount;
+      if (proof.status === "pending") acc.pending += amount;
+      return acc;
+    }, { verified: 0, pending: 0 });
   },
 
   leaderboardScore(profile, transactions) {
@@ -612,6 +631,7 @@ const ui = {
     const locationLabel = state.profile.location?.trim() ? state.profile.location.trim() : "your region";
     const savingsGap = totals.income - totals.expenses;
     const donationsTotal = analytics.donationAmount(state.transactions);
+    const proofTotals = analytics.donationProofTotals(state.proofs);
     const now = new Date();
     const currentMonthDonations = state.transactions
       .filter((transaction) => {
@@ -625,7 +645,8 @@ const ui = {
     const donationIncomePercent = totals.income > 0 ? (currentMonthDonations / totals.income) * 100 : 0;
     const donationStreak = analytics.donationStreakMonths(state.transactions);
     const savingsComponent = totals.income > 0 ? Math.max(0, savingsGap) / totals.income : 0;
-    const donationComponent = totals.income > 0 ? donationsTotal / totals.income : 0;
+    const donationsForScore = donationsTotal + proofTotals.verified + (proofTotals.pending * 0.3);
+    const donationComponent = totals.income > 0 ? donationsForScore / totals.income : 0;
     const consistencyComponent = behavior.consistency / 100;
 
     if ($.locationScoreAdjustment) {
@@ -758,6 +779,43 @@ const ui = {
     $.donationPercent.value = p.donation.percent;
   },
 
+
+  renderSubscriptionProgress() {
+    const totals = analytics.totals(state.transactions);
+    const netSavings = Math.max(0, totals.income - totals.expenses);
+    const target = 2000;
+    const ratio = target > 0 ? Math.min(1, netSavings / target) : 0;
+    const percent = Math.round(ratio * 100);
+    const filled = Math.round(ratio * 10);
+    const bar = `[${"█".repeat(filled)}${"░".repeat(10 - filled)}] ${percent}% complete`;
+
+    if ($.netflixProgressBar) $.netflixProgressBar.textContent = bar;
+    if ($.netflixProgressText) $.netflixProgressText.textContent = `₹${Math.round(netSavings)} / ₹${target}`;
+  },
+
+
+  renderDonationProofs() {
+    if (!$.donationProofList) return;
+    $.donationProofList.innerHTML = "";
+    const currentUser = state.profile.displayName || state.profile.name || "User";
+    const proofs = (state.proofs || []).filter((proof) => proof.user_id === currentUser).slice().reverse();
+
+    proofs.forEach((proof) => {
+      const item = document.createElement("li");
+      const badge = proof.status === "verified" ? "✅" : proof.status === "rejected" ? "❌" : "⏳";
+      item.innerHTML = `<span>${badge} ${proof.platform} · ${formatters.currency(proof.amount)} · ${proof.status.toUpperCase()}</span>`;
+
+      if (proof.status === "pending") {
+        const row = document.createElement("div");
+        row.className = "form-actions";
+        row.innerHTML = `<button type="button" data-proof-action="approve" data-proof-id="${proof.id}">Approve</button><button type="button" class="secondary" data-proof-action="reject" data-proof-id="${proof.id}">Reject</button>`;
+        item.appendChild(row);
+      }
+
+      $.donationProofList.appendChild(item);
+    });
+  },
+
   switchView(view) {
     document.querySelectorAll(".view-section").forEach((section) => section.classList.remove("active"));
     document.querySelectorAll(".tab-btn").forEach((button) => button.classList.remove("active"));
@@ -788,6 +846,8 @@ const ui = {
     this.renderInsights();
     this.renderProfileStatus();
     this.renderProfileForm();
+    this.renderSubscriptionProgress();
+    this.renderDonationProofs();
   }
 };
 
@@ -930,6 +990,93 @@ function handleSaveProfile() {
 
 
 
+
+function normalizeProofData(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isDuplicateTransactionId(txId) {
+  const normalized = normalizeProofData(txId);
+  return state.proofs.some((proof) => proof.proof_type === "text" && normalizeProofData(proof.proof_data) === normalized);
+}
+
+function isDuplicateImageProof(imageRef) {
+  const normalized = normalizeProofData(imageRef);
+  return state.proofs.some((proof) => proof.proof_type === "image" && normalizeProofData(proof.proof_data) === normalized);
+}
+
+function todayKey() {
+  return getToday();
+}
+
+function handleSubmitDonationProof() {
+  const amount = Number($.donationProofAmount?.value || 0);
+  const platform = $.donationProofPlatform?.value || "Manual";
+  const proofType = $.donationProofType?.value || "image";
+  const proofData = ($.donationProofData?.value || "").trim();
+  const userId = state.profile.displayName || state.profile.name || "User";
+
+  if (amount <= 0 || !proofData) {
+    if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Enter amount and valid proof data.";
+    return;
+  }
+
+  const todayUploads = state.proofs.filter((proof) => proof.user_id === userId && proof.timestamp?.startsWith(todayKey())).length;
+  if (todayUploads >= 5) {
+    if ($.proofStatusMessage) $.proofStatusMessage.textContent = "⚠️ Too many uploads today. Submission sent for review.";
+    return;
+  }
+
+  if (proofType === "text") {
+    if (!/^[A-Za-z0-9-]{6,}$/.test(proofData)) {
+      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "❌ Invalid transaction ID format.";
+      return;
+    }
+    if (isDuplicateTransactionId(proofData)) {
+      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "❌ Transaction ID already used.";
+      return;
+    }
+  }
+
+  if (proofType === "image") {
+    if (proofData.length < 8 || !/[A-Za-z0-9]/.test(proofData)) {
+      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "⚠️ Image proof seems unclear. Please upload clearer receipt info.";
+      return;
+    }
+    if (isDuplicateImageProof(proofData)) {
+      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "❌ Same screenshot used twice.";
+      return;
+    }
+  }
+
+  state.proofs.push({
+    id: Date.now(),
+    user_id: userId,
+    amount,
+    platform,
+    proof_type: proofType,
+    proof_data: proofData,
+    status: "pending",
+    timestamp: `${todayKey()}T${new Date().toISOString().split("T")[1]}`
+  });
+
+  transactionService.persist();
+  if ($.proofStatusMessage) $.proofStatusMessage.textContent = "⏳ Verification in progress";
+  if ($.donationProofAmount) $.donationProofAmount.value = "";
+  if ($.donationProofData) $.donationProofData.value = "";
+  ui.renderAll();
+}
+
+function handleProofDecision(proofId, decision) {
+  state.proofs = state.proofs.map((proof) => {
+    if (proof.id !== proofId) return proof;
+    return { ...proof, status: decision === "approve" ? "verified" : "rejected" };
+  });
+  transactionService.persist();
+  if ($.proofStatusMessage) $.proofStatusMessage.textContent = decision === "approve" ? "✅ Verified Donation" : "❌ Proof rejected – upload clearer receipt";
+  ui.renderAll();
+}
+
 function handleSaveSettings() {
   if (!$.settingsPlan) return;
   state.profile.displayName = $.settingsDisplayName?.value.trim() || state.profile.displayName;
@@ -1001,6 +1148,7 @@ function bindEvents() {
   $.searchInput.addEventListener("input", () => ui.renderTransactions());
   if ($.saveProfileBtn) $.saveProfileBtn.addEventListener("click", handleSaveProfile);
   if ($.saveSettingsBtn) $.saveSettingsBtn.addEventListener("click", handleSaveSettings);
+  if ($.submitDonationProofBtn) $.submitDonationProofBtn.addEventListener("click", handleSubmitDonationProof);
 
   $.transactionList.addEventListener("click", (event) => {
     const editId = event.target.getAttribute("data-edit");
@@ -1012,6 +1160,15 @@ function bindEvents() {
       ui.renderAll();
     }
   });
+
+  if ($.donationProofList) {
+    $.donationProofList.addEventListener("click", (event) => {
+      const action = event.target.getAttribute("data-proof-action");
+      const id = Number(event.target.getAttribute("data-proof-id"));
+      if (!action || !id) return;
+      handleProofDecision(id, action);
+    });
+  }
 
   document.querySelectorAll(".tab-btn").forEach((button) => {
     button.addEventListener("click", (event) => {
