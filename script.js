@@ -61,19 +61,30 @@ const $ = {
   homeLogoLink: document.getElementById("homeLogoLink"),
   navDropdowns: document.querySelectorAll(".nav-dropdown"),
   leaderboardScore: document.getElementById("leaderboardScore"),
+  locationScoreAdjustment: document.getElementById("locationScoreAdjustment"),
+  scoreFormula: document.getElementById("scoreFormula"),
+  savingBehaviorSummary: document.getElementById("savingBehaviorSummary"),
   leaderboardRank: document.getElementById("leaderboardRank"),
   topDonor: document.getElementById("topDonor"),
+  totalDonations: document.getElementById("totalDonations"),
+  donationPercentIncome: document.getElementById("donationPercentIncome"),
+  donationStreak: document.getElementById("donationStreak"),
+  donationInsight: document.getElementById("donationInsight"),
   leaderboardList: document.getElementById("leaderboardList"),
   nearbyRanks: document.getElementById("nearbyRanks"),
   userTier: document.getElementById("userTier"),
   pointsEarned: document.getElementById("pointsEarned"),
   rewardEligibility: document.getElementById("rewardEligibility"),
+  rewardProgress: document.getElementById("rewardProgress"),
+  rewardUnlockHint: document.getElementById("rewardUnlockHint"),
   advancedInsights: document.getElementById("advancedInsights"),
   boostStatus: document.getElementById("boostStatus"),
   competitionStatus: document.getElementById("competitionStatus"),
   premiumUntil: document.getElementById("premiumUntil"),
   settingsDisplayName: document.getElementById("settingsDisplayName"),
   settingsPlan: document.getElementById("settingsPlan"),
+  autoDonateToggle: document.getElementById("autoDonateToggle"),
+  darkModeToggle: document.getElementById("darkModeToggle"),
   saveSettingsBtn: document.getElementById("saveSettingsBtn"),
   settingsMessage: document.getElementById("settingsMessage")
 };
@@ -89,7 +100,8 @@ const getDefaultProfile = () => ({
   income: { salary: 0, freelance: 0, business: 0, passive: 0 },
   expenses: { housing: 0, food: 0, transport: 0, utilities: 0 },
   goals: { shortTerm: "", longTerm: "" },
-  donation: { cause: "", percent: 0 }
+  donation: { cause: "", percent: 0, autoDonate: true },
+  preferences: { darkMode: false }
 });
 
 
@@ -121,7 +133,8 @@ const dataStore = {
           income: { ...getDefaultProfile().income, ...(parsed.profile.income || {}) },
           expenses: { ...getDefaultProfile().expenses, ...(parsed.profile.expenses || {}) },
           goals: { ...getDefaultProfile().goals, ...(parsed.profile.goals || {}) },
-          donation: { ...getDefaultProfile().donation, ...(parsed.profile.donation || {}) } } : getDefaultProfile(),
+          donation: { ...getDefaultProfile().donation, ...(parsed.profile.donation || {}) },
+          preferences: { ...getDefaultProfile().preferences, ...(parsed.profile.preferences || {}) } } : getDefaultProfile(),
         profileCompleted: Boolean(parsed.profileCompleted),
         premiumUnlockUntil: parsed.premiumUnlockUntil || null,
         leaderboardAlias: parsed.leaderboardAlias || generateCreativeAlias(),
@@ -314,23 +327,46 @@ const analytics = {
       .filter((transaction) => transaction.type === "expense" && ["donation", "charity", "help"].some((tag) => transaction.category.toLowerCase().includes(tag)))
       .reduce((sum, transaction) => sum + transaction.amount, 0);
   },
+  donationStreakMonths(transactions) {
+    const donationMonths = new Set(
+      transactions
+        .filter((transaction) => transaction.type === "expense" && ["donation", "charity", "help"].some((tag) => transaction.category.toLowerCase().includes(tag)))
+        .map((transaction) => {
+          const d = new Date(transaction.date);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        })
+    );
+
+    let streak = 0;
+    const cursor = new Date();
+    cursor.setDate(1);
+
+    while (true) {
+      const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+      if (!donationMonths.has(key)) break;
+      streak += 1;
+      cursor.setMonth(cursor.getMonth() - 1);
+    }
+
+    return streak;
+  },
 
   leaderboardScore(profile, transactions) {
     const totals = this.totals(transactions);
     const netSavings = Math.max(0, totals.income - totals.expenses);
-    const averageIncome = this.localAverageIncome(profile.location);
     const behavior = this.savingsBehaviorMetrics(transactions);
     const donation = this.donationAmount(transactions);
 
-    const savingsComponent = averageIncome > 0 ? netSavings / averageIncome : 0;
+    const savingsComponent = totals.income > 0 ? netSavings / totals.income : 0;
+    const donationComponent = totals.income > 0 ? donation / totals.income : 0;
     const consistencyComponent = behavior.consistency / 100;
-    const impactComponent = totals.income > 0
-      ? (donation / totals.income) + ((Number(profile.donation?.percent) || 0) / 100)
-      : (Number(profile.donation?.percent) || 0) / 100;
 
     return {
-      score: Number((savingsComponent + consistencyComponent + impactComponent).toFixed(3)),
-      donation
+      score: Number((savingsComponent + donationComponent + consistencyComponent).toFixed(3)),
+      donation,
+      donationComponent,
+      savingsComponent,
+      consistencyComponent
     };
   },
 
@@ -571,6 +607,42 @@ const ui = {
     const rank = leaderboard.entries.findIndex((entry) => entry.name === leaderboard.currentUserName) + 1;
     if ($.leaderboardScore) $.leaderboardScore.textContent = leaderboard.currentScore.toFixed(3);
     if ($.leaderboardRank) $.leaderboardRank.textContent = rank > 0 ? `#${rank}` : "-";
+
+    const localAverage = analytics.localAverageIncome(state.profile.location);
+    const locationLabel = state.profile.location?.trim() ? state.profile.location.trim() : "your region";
+    const savingsGap = totals.income - totals.expenses;
+    const donationsTotal = analytics.donationAmount(state.transactions);
+    const now = new Date();
+    const currentMonthDonations = state.transactions
+      .filter((transaction) => {
+        if (transaction.type !== "expense") return false;
+        const category = String(transaction.category || "").toLowerCase();
+        if (!["donation", "charity", "help"].some((tag) => category.includes(tag))) return false;
+        const d = new Date(transaction.date);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      })
+      .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+    const donationIncomePercent = totals.income > 0 ? (currentMonthDonations / totals.income) * 100 : 0;
+    const donationStreak = analytics.donationStreakMonths(state.transactions);
+    const savingsComponent = totals.income > 0 ? Math.max(0, savingsGap) / totals.income : 0;
+    const donationComponent = totals.income > 0 ? donationsTotal / totals.income : 0;
+    const consistencyComponent = behavior.consistency / 100;
+
+    if ($.locationScoreAdjustment) {
+      $.locationScoreAdjustment.textContent = `Adjusted using average income in ${locationLabel} (${formatters.currency(localAverage)}). Net savings impact: ${formatters.currency(savingsGap)}.`;
+    }
+    if ($.scoreFormula) {
+      $.scoreFormula.textContent = `Score = Savings + Donations + Consistency = ${savingsComponent.toFixed(3)} + ${donationComponent.toFixed(3)} + ${consistencyComponent.toFixed(3)}.`;
+    }
+    if ($.savingBehaviorSummary) {
+      $.savingBehaviorSummary.textContent = `${behavior.savingsRate.toFixed(1)}% income saved, consistency ${behavior.consistency}/100 (daily/weekly), streak ${behavior.streak} day${behavior.streak === 1 ? "" : "s"}.`;
+    }
+
+    if ($.totalDonations) $.totalDonations.textContent = formatters.currency(donationsTotal);
+    if ($.donationPercentIncome) $.donationPercentIncome.textContent = `${donationIncomePercent.toFixed(1)}%`;
+    if ($.donationStreak) $.donationStreak.textContent = `${donationStreak} month${donationStreak === 1 ? "" : "s"}`;
+    if ($.donationInsight) $.donationInsight.textContent = `You donated ${donationIncomePercent.toFixed(1)}% of your income this month.`;
+
     if ($.topDonor) $.topDonor.textContent = leaderboard.entries[0] ? `${leaderboard.entries[0].name} (${formatters.currency(leaderboard.entries[0].donation)})` : "-";
 
     if ($.leaderboardList) {
@@ -628,6 +700,21 @@ const ui = {
     if ($.userTier) $.userTier.textContent = isPremium ? "Premium" : "Free";
     if ($.pointsEarned) $.pointsEarned.textContent = `${points} pts`;
     if ($.rewardEligibility) $.rewardEligibility.textContent = isPremium ? "Eligible (Netflix / Amazon rewards)" : "Not eligible yet";
+
+    const profileIncome = Number(state.profile.income?.salary || 0) + Number(state.profile.income?.freelance || 0) + Number(state.profile.income?.business || 0) + Number(state.profile.income?.passive || 0);
+    const donationPercent = Number(state.profile.donation?.percent) || 0;
+    const donationTarget = Math.max(200, Number(((profileIncome * donationPercent) / 100).toFixed(2)) || 200);
+    const donatedSoFar = analytics.donationAmount(state.transactions);
+    const rewardProgressPercent = donationTarget > 0 ? Math.min(100, Math.round((donatedSoFar / donationTarget) * 100)) : 0;
+    const remainingForReward = Math.max(0, donationTarget - donatedSoFar);
+
+    if ($.rewardProgress) $.rewardProgress.textContent = `You are ${rewardProgressPercent}% eligible for Netflix reward`;
+    if ($.rewardUnlockHint) {
+      $.rewardUnlockHint.textContent = remainingForReward > 0
+        ? `Donate ${formatters.currency(remainingForReward)} more to unlock`
+        : "Reward unlocked based on your profile donation target";
+    }
+
     if ($.advancedInsights) $.advancedInsights.textContent = isPremium ? `Savings ratio ${behavior.savingsRate.toFixed(1)}%, consistency ${behavior.consistency}/100` : "Locked for Free users";
     if ($.boostStatus) $.boostStatus.textContent = isPremium ? "Boost active in leaderboard" : "Standard visibility";
     if ($.competitionStatus) $.competitionStatus.textContent = isPremium ? "Special competitions unlocked" : "Open competition (basic)";
@@ -655,6 +742,8 @@ const ui = {
     $.profileFamilyResponsibilities.value = p.familyResponsibilities;
     if ($.settingsDisplayName) $.settingsDisplayName.value = p.displayName;
     if ($.settingsPlan) $.settingsPlan.value = p.plan;
+    if ($.autoDonateToggle) $.autoDonateToggle.value = p.donation.autoDonate === false ? "off" : "on";
+    if ($.darkModeToggle) $.darkModeToggle.value = p.preferences?.darkMode ? "on" : "off";
     $.incomeSalary.value = p.income.salary;
     $.incomeFreelance.value = p.income.freelance;
     $.incomeBusiness.value = p.income.business;
@@ -845,12 +934,20 @@ function handleSaveSettings() {
   if (!$.settingsPlan) return;
   state.profile.displayName = $.settingsDisplayName?.value.trim() || state.profile.displayName;
   state.profile.plan = $.settingsPlan.value;
+  state.profile.donation.autoDonate = $.autoDonateToggle ? $.autoDonateToggle.value !== "off" : true;
+  state.profile.preferences.darkMode = $.darkModeToggle ? $.darkModeToggle.value === "on" : false;
   state.profileCompleted = isProfileComplete(state.profile);
+  applyTheme();
   transactionService.persist();
   if ($.settingsMessage) $.settingsMessage.textContent = `Settings saved. Plan: ${state.profile.plan === "premium" ? "Premium" : "Free"}.`;
   ui.renderAll();
 }
 
+
+function applyTheme() {
+  const darkMode = state.profile.preferences?.darkMode === true;
+  document.body.classList.toggle("dark-mode", darkMode);
+}
 
 function getCurrentMonthKey() {
   const now = new Date();
@@ -859,7 +956,8 @@ function getCurrentMonthKey() {
 
 function processMonthlyDonation() {
   const percent = Number(state.profile.donation?.percent) || 0;
-  if (percent <= 0) return;
+  const autoDonateEnabled = state.profile.donation?.autoDonate !== false;
+  if (!autoDonateEnabled || percent <= 0) return;
 
   const monthKey = getCurrentMonthKey();
   if (state.donationLastProcessedMonth === monthKey) return;
@@ -1002,6 +1100,7 @@ function initialize() {
     transactionService.persist();
   }
   bindEvents();
+  applyTheme();
   processMonthlyDonation();
   ui.switchView("overview");
   if ($.settingsMessage) $.settingsMessage.textContent = "";

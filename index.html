@@ -65,22 +65,22 @@
     <section id="overview-view" class="view-section active">
       <section class="metric-grid" aria-label="Overview metrics">
         <article class="metric-card balance">
-          <h2>Current Balance</h2>
+          <h2>💰 Current Balance</h2>
           <p class="metric-value" id="current-balance">Rs 0.00</p>
         </article>
 
         <article class="metric-card income">
-          <h2>Total Income</h2>
+          <h2>📈 Total Income</h2>
           <p class="metric-value" id="total-income">Rs 0.00</p>
         </article>
 
         <article class="metric-card expenses">
-          <h2>Total Expenses</h2>
+          <h2>📉 Total Expenses</h2>
           <p class="metric-value" id="total-expenses">Rs 0.00</p>
         </article>
 
         <article class="metric-card savings">
-          <h2>Savings Progress</h2>
+          <h2>🎯 Savings Progress</h2>
           <div class="progress-row">
             <div class="progress-track" role="img" aria-label="Savings progress">
               <span id="savings-fill"></span>
@@ -162,7 +162,7 @@
     </section>
 
     <section id="leaderboard-view" class="view-section insights leaderboard-decor">
-      <h2>Leaderboard</h2>
+      <h2>🏆 Leaderboard</h2>
       <div class="insight-card" id="leaderboard-ranking">
         <p><strong>Your Rank:</strong> <span id="leaderboardRank">-</span></p>
       </div>
@@ -195,13 +195,34 @@
         <p><strong>Consistency Score:</strong> <span id="consistencyScore">-</span></p>
       </div>
       <div class="insight-card">
-        <p><strong>Saving Streak:</strong> <span id="savingStreak">-</span></p>
+        <p><strong>🔥 Saving Streak:</strong> <span id="savingStreak">-</span></p>
       </div>
       <div class="insight-card">
         <p><strong>Your Score:</strong> <span id="leaderboardScore">-</span></p>
       </div>
       <div class="insight-card">
+        <p><strong>Location Score Adjustment:</strong> <span id="locationScoreAdjustment">-</span></p>
+      </div>
+      <div class="insight-card">
+        <p><strong>Score Formula:</strong> <span id="scoreFormula">-</span></p>
+      </div>
+      <div class="insight-card">
+        <p><strong>Saving Behavior:</strong> <span id="savingBehaviorSummary">-</span></p>
+      </div>
+      <div class="insight-card">
         <p><strong>Top Donor:</strong> <span id="topDonor">-</span></p>
+      </div>
+      <div class="insight-card">
+        <p><strong>Total Donations:</strong> <span id="totalDonations">-</span></p>
+      </div>
+      <div class="insight-card">
+        <p><strong>Donation % of Income:</strong> <span id="donationPercentIncome">-</span></p>
+      </div>
+      <div class="insight-card">
+        <p><strong>Donation Streak:</strong> <span id="donationStreak">-</span></p>
+      </div>
+      <div class="insight-card">
+        <p><strong>Donation Insight:</strong> <span id="donationInsight">-</span></p>
       </div>
       <div class="insight-card">
         <p><strong>User Tier:</strong> <span id="userTier">-</span></p>
@@ -210,7 +231,12 @@
         <p><strong>Points Earned:</strong> <span id="pointsEarned">-</span></p>
       </div>
       <div class="insight-card">
-        <p><strong>Reward Eligibility:</strong> <span id="rewardEligibility">-</span></p>
+        <p><strong>🎁 Rewards:</strong> <span id="rewardEligibility">-</span></p>
+      </div>
+      <div class="insight-card">
+        <p><strong>🎁 Reward Progress</strong></p>
+        <p id="rewardProgress">-</p>
+        <p id="rewardUnlockHint">-</p>
       </div>
       <div class="insight-card">
         <p><strong>Advanced Insights:</strong> <span id="advancedInsights">Locked for Free users</span></p>
@@ -233,6 +259,13 @@
           <h2>Settings</h2>
           <p>Membership</p>
         </div>
+
+        <div class="insight-card subscription-usp">
+          <p><strong>Masked Card:</strong> **** **** **** 4582</p>
+          <p><strong>👉 Earn subscription through savings</strong></p>
+          <p>🎁 Netflix unlocked after ₹2000 savings + ₹500 donation</p>
+        </div>
+
         <label for="settingsDisplayName">Display name (Leaderboard)</label>
         <input type="text" id="settingsDisplayName" placeholder="Name shown on leaderboard" />
 
@@ -241,6 +274,19 @@
           <option value="free">Free</option>
           <option value="premium">Premium</option>
         </select>
+
+        <label for="autoDonateToggle">Auto-donate % of savings</label>
+        <select id="autoDonateToggle">
+          <option value="on">ON</option>
+          <option value="off">OFF</option>
+        </select>
+
+        <label for="darkModeToggle">Dark mode</label>
+        <select id="darkModeToggle">
+          <option value="off">OFF</option>
+          <option value="on">ON</option>
+        </select>
+
         <div class="form-actions">
           <button type="button" id="saveSettingsBtn">Save Settings</button>
         </div>
@@ -296,7 +342,7 @@
             <label for="expenseFood">Food</label>
             <input type="number" id="expenseFood" min="0" step="0.01" placeholder="0" />
 
-            <label for="expenseTransport">Transport</label>
+            <label for="expenseTransport">Travel</label>
             <input type="number" id="expenseTransport" min="0" step="0.01" placeholder="0" />
 
             <label for="expenseUtilities">Utilities</label>
@@ -304,7 +350,7 @@
           </div>
 
           <div>
-            <p><strong>Goals</strong></p>
+            <p><strong>Financial Goals</strong></p>
             <label for="goalShortTerm">Short-term goals</label>
             <input type="text" id="goalShortTerm" placeholder="Netflix, gadget..." />
 
