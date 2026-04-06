@@ -393,9 +393,12 @@ body.dark-mode .summary-paragraph {
     display: block;
     width: 20px;
     height: 2px;
-    background: #ffffff;
+    background: var(--text);
     border-radius: 2px;
     transition: all 0.3s ease;
+  }
+  body.dark-mode .hamburger-menu span {
+    background: #ffffff;
   }
   .hamburger-menu.active span:nth-child(1) {
     transform: rotate(45deg) translate(8px, 8px);
