@@ -71,6 +71,7 @@ const $ = {
   donationStreak: document.getElementById("donationStreak"),
   donationInsight: document.getElementById("donationInsight"),
   nearbyRanks: document.getElementById("nearbyRanks"),
+  top5Leaders: document.getElementById("top5Leaders"),
   userTier: document.getElementById("userTier"),
   pointsEarned: document.getElementById("pointsEarned"),
   rewardEligibility: document.getElementById("rewardEligibility"),
@@ -653,6 +654,15 @@ const ui = {
         item.textContent = "No adjacent ranks available yet.";
         $.nearbyRanks.appendChild(item);
       }
+    }
+
+    if ($.top5Leaders) {
+      $.top5Leaders.innerHTML = '';
+      leaderboard.entries.slice(0, 5).forEach((entry, index) => {
+        const li = document.createElement('li');
+        li.textContent = `#${index + 1} ${entry.name} · ${formatters.currency(entry.donation)} · ${entry.score.toFixed(3)}`;
+        $.top5Leaders.appendChild(li);
+      });
     }
 
     const reachedStreakUnlock = behavior.streak >= 7;
