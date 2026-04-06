@@ -35,6 +35,7 @@
                 <button class="dropdown-item" data-view="leaderboard" data-action="jump-summary" type="button">Summary</button>
               </div>
             </div>
+            <button class="tab-btn" data-view="donation" type="button">Donations</button>
             <button class="tab-btn" data-view="settings" type="button">Settings</button>
           </nav>
         </div>
@@ -59,28 +60,29 @@
           <button class="dropdown-item" data-view="leaderboard" data-action="jump-summary" type="button">Summary</button>
         </div>
       </div>
+      <button class="tab-btn" data-view="donation" type="button">Donations</button>
       <button class="tab-btn" data-view="settings" type="button">Settings</button>
     </nav>
 
     <section id="overview-view" class="view-section active">
       <section class="metric-grid" aria-label="Overview metrics">
         <article class="metric-card balance">
-          <h2>💰 Current Balance</h2>
+          <h2>Current Balance</h2>
           <p class="metric-value" id="current-balance">Rs 0.00</p>
         </article>
 
         <article class="metric-card income">
-          <h2>📈 Total Income</h2>
+          <h2>Total Income</h2>
           <p class="metric-value" id="total-income">Rs 0.00</p>
         </article>
 
         <article class="metric-card expenses">
-          <h2>📉 Total Expenses</h2>
+          <h2>Total Expenses</h2>
           <p class="metric-value" id="total-expenses">Rs 0.00</p>
         </article>
 
         <article class="metric-card savings">
-          <h2>🎯 Savings Progress</h2>
+          <h2>Savings Progress</h2>
           <div class="progress-row">
             <div class="progress-track" role="img" aria-label="Savings progress">
               <span id="savings-fill"></span>
@@ -162,7 +164,7 @@
     </section>
 
     <section id="leaderboard-view" class="view-section insights leaderboard-decor">
-      <h2>🏆 Leaderboard</h2>
+      <h2>Leaderboard</h2>
       <div class="insight-card" id="leaderboard-ranking">
         <p><strong>Your Rank:</strong> <span id="leaderboardRank">-</span></p>
       </div>
@@ -170,9 +172,21 @@
         <p><strong>People close to your rank:</strong></p>
         <ul id="nearbyRanks" class="nearby-ranks-list"></ul>
       </div>
+      <h2 id="leaderboard-summary">Summary</h2>
       <div class="insight-card">
-        <p><strong>Donation Leaderboard</strong></p>
-        <ol id="leaderboardList" class="leaderboard-list"></ol>
+        <p id="summaryParagraph" class="summary-paragraph">Add transactions to generate your financial summary.</p>
+      </div>
+    </section>
+
+    <section id="donation-view" class="view-section insights">
+      <h2>Donations</h2>
+      <div class="insight-card">
+        <p><strong>Donation Preferences</strong></p>
+        <label for="donationCause">Donation cause</label>
+        <input type="text" id="donationCause" placeholder="Education, Animals..." />
+
+        <label for="donationPercent">Donation willingness %</label>
+        <input type="number" id="donationPercent" min="0" max="100" step="0.01" placeholder="0" />
       </div>
       <div class="insight-card">
         <p><strong>Donation Proof Verification</strong></p>
@@ -188,9 +202,9 @@
 
         <label for="donationProofType">Proof type</label>
         <select id="donationProofType">
-          <option value="image">📸 Screenshot</option>
-          <option value="text">🔗 Transaction ID</option>
-          <option value="redirect">🌐 Redirect confirmation</option>
+          <option value="image">Screenshot</option>
+          <option value="text">Transaction ID</option>
+          <option value="redirect">Redirect confirmation</option>
         </select>
 
         <div id="proofFieldsImage" class="proof-field-group">
@@ -212,119 +226,83 @@
         <p id="proofStatusMessage" class="goal-copy"></p>
         <ul id="donationProofList" class="nearby-ranks-list"></ul>
       </div>
-
-      <h2 id="leaderboard-summary">Summary</h2>
-      <div class="insight-card">
-        <p><strong>Top Spending Category:</strong> <span id="topCategory">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Income vs Expenses:</strong> <span id="incomeVsExpenses">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Most Frequent Type:</strong> <span id="frequentType">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>This Week vs Last Week:</strong> <span id="weekComparison">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Savings Rate:</strong> <span id="savingsRate">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Consistency Score:</strong> <span id="consistencyScore">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>🔥 Saving Streak:</strong> <span id="savingStreak">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Your Score:</strong> <span id="leaderboardScore">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Location Score Adjustment:</strong> <span id="locationScoreAdjustment">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Score Formula:</strong> <span id="scoreFormula">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Saving Behavior:</strong> <span id="savingBehaviorSummary">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Top Donor:</strong> <span id="topDonor">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Total Donations:</strong> <span id="totalDonations">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Donation % of Income:</strong> <span id="donationPercentIncome">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Donation Streak:</strong> <span id="donationStreak">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Donation Insight:</strong> <span id="donationInsight">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>User Tier:</strong> <span id="userTier">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Points Earned:</strong> <span id="pointsEarned">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>🎁 Rewards:</strong> <span id="rewardEligibility">-</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>🎁 Reward Progress</strong></p>
-        <p id="rewardProgress">-</p>
-        <p id="rewardUnlockHint">-</p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Advanced Insights:</strong> <span id="advancedInsights">Locked for Free users</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Visibility Boost:</strong> <span id="boostStatus">Standard</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Special Competitions:</strong> <span id="competitionStatus">Open to all users</span></p>
-      </div>
-      <div class="insight-card">
-        <p><strong>Premium Access Until:</strong> <span id="premiumUntil">-</span></p>
-      </div>
     </section>
 
 
-    <section id="settings-view" class="view-section profile-view">
+    <section id="settings-view" class="view-section profile-view settings-view">
       <article class="panel">
         <div class="panel-heading">
-          <h2>Settings</h2>
-          <p>Membership</p>
+          <h2>Diamond Settings</h2>
+          <p>Personalize your money dashboard experience</p>
         </div>
 
-        <div class="insight-card subscription-usp">
-          <p><strong>Masked Card:</strong> **** **** **** 4582</p>
-          <p><strong>👉 Earn subscription through savings</strong></p>
-          <p id="netflixProgressBar">[░░░░░░░░░░] 0% complete</p>
-          <p id="netflixProgressText">₹0 / ₹2000</p>
+        <div class="settings-layout">
+          <div class="settings-column">
+            <section class="insight-card subscription-usp settings-card">
+              <div class="settings-card-head">
+                <h3>Membership & Rewards</h3>
+                <span class="settings-chip">Target unlock</span>
+              </div>
+              <p><strong>Masked Card:</strong> **** **** **** 4582</p>
+              <p><strong>Earn subscription through savings</strong></p>
+              <div class="settings-progress">
+                <div class="settings-progress-track" aria-hidden="true">
+                  <span id="netflixProgressFill"></span>
+                </div>
+                <p id="netflixProgressBar">[░░░░░░░░░░] 0% complete</p>
+                <p id="netflixProgressText">₹0 / ₹2000</p>
+              </div>
+            </section>
+
+            <section class="insight-card settings-card">
+              <div class="settings-card-head">
+                <h3>Identity</h3>
+                <span class="settings-chip">Leaderboard</span>
+              </div>
+
+              <label for="settingsDisplayName">Display name</label>
+              <input type="text" id="settingsDisplayName" placeholder="Name shown on leaderboard" />
+              <p class="goal-copy">This name appears in rankings and donation boards.</p>
+            </section>
+          </div>
+
+          <div class="settings-column">
+            <section class="insight-card settings-card">
+              <div class="settings-card-head">
+                <h3>App Preferences</h3>
+                <span class="settings-chip">Live behavior</span>
+              </div>
+
+              <label for="settingsPlan">Plan type</label>
+              <select id="settingsPlan">
+                <option value="free">Free</option>
+                <option value="premium">Premium</option>
+              </select>
+
+              <label for="autoDonateToggle">Auto-donate % of savings</label>
+              <select id="autoDonateToggle">
+                <option value="on">ON</option>
+                <option value="off">OFF</option>
+              </select>
+
+              <label for="darkModeToggle">Dark mode</label>
+              <select id="darkModeToggle">
+                <option value="off">OFF</option>
+                <option value="on">ON</option>
+              </select>
+            </section>
+
+            <section class="insight-card settings-card settings-preview">
+              <div class="settings-card-head">
+                <h3>Current Setup</h3>
+                <span class="settings-chip">Quick glance</span>
+              </div>
+              <p><strong>Plan:</strong> <span id="settingsPlanBadge">Free</span></p>
+              <p><strong>Theme:</strong> <span id="settingsThemeBadge">Light</span></p>
+              <p><strong>Auto-donate:</strong> <span id="settingsDonateBadge">ON</span></p>
+            </section>
+          </div>
         </div>
-
-        <label for="settingsDisplayName">Display name (Leaderboard)</label>
-        <input type="text" id="settingsDisplayName" placeholder="Name shown on leaderboard" />
-
-        <label for="settingsPlan">Plan type</label>
-        <select id="settingsPlan">
-          <option value="free">Free</option>
-          <option value="premium">Premium</option>
-        </select>
-
-        <label for="autoDonateToggle">Auto-donate % of savings</label>
-        <select id="autoDonateToggle">
-          <option value="on">ON</option>
-          <option value="off">OFF</option>
-        </select>
-
-        <label for="darkModeToggle">Dark mode</label>
-        <select id="darkModeToggle">
-          <option value="off">OFF</option>
-          <option value="on">ON</option>
-        </select>
 
         <div class="form-actions">
           <button type="button" id="saveSettingsBtn">Save Settings</button>
@@ -395,13 +373,6 @@
 
             <label for="goalLongTerm">Long-term goals</label>
             <input type="text" id="goalLongTerm" placeholder="Education, savings, insurance" />
-
-            <p><strong>Donation</strong></p>
-            <label for="donationCause">Donation cause</label>
-            <input type="text" id="donationCause" placeholder="Education, Animals..." />
-
-            <label for="donationPercent">Donation willingness %</label>
-            <input type="number" id="donationPercent" min="0" max="100" step="0.01" placeholder="0" />
           </div>
         </div>
 

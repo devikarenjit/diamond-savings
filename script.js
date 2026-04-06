@@ -70,7 +70,6 @@ const $ = {
   donationPercentIncome: document.getElementById("donationPercentIncome"),
   donationStreak: document.getElementById("donationStreak"),
   donationInsight: document.getElementById("donationInsight"),
-  leaderboardList: document.getElementById("leaderboardList"),
   nearbyRanks: document.getElementById("nearbyRanks"),
   userTier: document.getElementById("userTier"),
   pointsEarned: document.getElementById("pointsEarned"),
@@ -89,6 +88,10 @@ const $ = {
   settingsMessage: document.getElementById("settingsMessage"),
   netflixProgressBar: document.getElementById("netflixProgressBar"),
   netflixProgressText: document.getElementById("netflixProgressText"),
+  netflixProgressFill: document.getElementById("netflixProgressFill"),
+  settingsPlanBadge: document.getElementById("settingsPlanBadge"),
+  settingsThemeBadge: document.getElementById("settingsThemeBadge"),
+  settingsDonateBadge: document.getElementById("settingsDonateBadge"),
   donationProofAmount: document.getElementById("donationProofAmount"),
   donationProofPlatform: document.getElementById("donationProofPlatform"),
   donationProofType: document.getElementById("donationProofType"),
@@ -101,7 +104,8 @@ const $ = {
   proofFieldsData: document.getElementById("proofFieldsData"),
   submitDonationProofBtn: document.getElementById("submitDonationProofBtn"),
   proofStatusMessage: document.getElementById("proofStatusMessage"),
-  donationProofList: document.getElementById("donationProofList")
+  donationProofList: document.getElementById("donationProofList"),
+  summaryParagraph: document.getElementById("summaryParagraph")
 };
 
 
@@ -473,7 +477,7 @@ const ui = {
 
     filteredTransactions.forEach((transaction) => {
       const item = document.createElement("li");
-      item.className = "transaction-item";
+      item.className = `transaction-item ${transaction.type === "income" ? "transaction-income" : "transaction-expense"}`;
       item.innerHTML = `
         <div>
           <p class="item-main">${transaction.type.toUpperCase()} · ${formatters.currency(transaction.amount)} · ${transaction.category}</p>
@@ -502,11 +506,11 @@ const ui = {
     $.savingsPercent.textContent = `${progress}%`;
 
     if (state.monthlyGoal === 0) {
-      $.goalMessage.textContent = "Set a monthly goal to track progress.";
+      $.goalMessage.textContent = "Set a monthly savings target to track progress.";
     } else if (savings >= state.monthlyGoal) {
-      $.goalMessage.textContent = "Great work—you reached your monthly savings goal!";
+      $.goalMessage.textContent = "Monthly savings target reached.";
     } else {
-      $.goalMessage.textContent = `You are ${formatters.currency(state.monthlyGoal - savings)} away from your goal.`;
+      $.goalMessage.textContent = `${formatters.currency(state.monthlyGoal - savings)} remaining to reach your monthly target.`;
     }
   },
 
@@ -576,24 +580,9 @@ const ui = {
 
   renderInsights() {
     if (!state.transactions.length) {
-      $.topCategory.textContent = "-";
-      $.incomeVsExpenses.textContent = "-";
-      $.frequentType.textContent = "-";
-      $.weekComparison.textContent = "-";
-    if ($.savingsRate) $.savingsRate.textContent = "-";
-    if ($.consistencyScore) $.consistencyScore.textContent = "-";
-    if ($.savingStreak) $.savingStreak.textContent = "-";
-    if ($.leaderboardScore) $.leaderboardScore.textContent = "-";
-    if ($.leaderboardRank) $.leaderboardRank.textContent = "-";
-    if ($.topDonor) $.topDonor.textContent = "-";
-    if ($.leaderboardList) $.leaderboardList.innerHTML = "";
-    if ($.userTier) $.userTier.textContent = "-";
-    if ($.pointsEarned) $.pointsEarned.textContent = "-";
-    if ($.rewardEligibility) $.rewardEligibility.textContent = "-";
-    if ($.advancedInsights) $.advancedInsights.textContent = "-";
-    if ($.boostStatus) $.boostStatus.textContent = "-";
-    if ($.competitionStatus) $.competitionStatus.textContent = "-";
-    if ($.premiumUntil) $.premiumUntil.textContent = "-";
+      if ($.summaryParagraph) $.summaryParagraph.textContent = "Add transactions to generate your financial summary.";
+      if ($.leaderboardRank) $.leaderboardRank.textContent = "-";
+      if ($.nearbyRanks) $.nearbyRanks.innerHTML = "";
       return;
     }
 
@@ -618,15 +607,8 @@ const ui = {
         ? `${formatters.currency(weekly.thisWeek)} this week.`
         : `${Math.round(((weekly.thisWeek - weekly.lastWeek) / weekly.lastWeek) * 100)}% vs last week.`;
 
-    $.topCategory.textContent = topCategory;
-    $.incomeVsExpenses.textContent = `${formatters.currency(totals.income)} vs ${formatters.currency(totals.expenses)}`;
-    $.frequentType.textContent = counts.income >= counts.expense ? "Income" : "Expense";
-    $.weekComparison.textContent = weekComparisonCopy;
-
     const behavior = analytics.savingsBehaviorMetrics(state.transactions);
-    if ($.savingsRate) $.savingsRate.textContent = `${behavior.savingsRate.toFixed(1)}%`;
-    if ($.consistencyScore) $.consistencyScore.textContent = `${behavior.consistency}/100`;
-    if ($.savingStreak) $.savingStreak.textContent = `${behavior.streak} day${behavior.streak === 1 ? "" : "s"}`;
+    const frequentType = counts.income >= counts.expense ? "Income" : "Expense";
 
     const leaderboard = analytics.leaderboardEntries(state);
     const rank = leaderboard.entries.findIndex((entry) => entry.name === leaderboard.currentUserName) + 1;
@@ -636,51 +618,11 @@ const ui = {
     const localAverage = analytics.localAverageIncome(state.profile.location);
     const locationLabel = state.profile.location?.trim() ? state.profile.location.trim() : "your region";
     const savingsGap = totals.income - totals.expenses;
-    const donationsTotal = analytics.donationAmount(state.transactions);
-    const proofTotals = analytics.donationProofTotals(state.proofs);
-    const now = new Date();
-    const currentMonthDonations = state.transactions
-      .filter((transaction) => {
-        if (transaction.type !== "expense") return false;
-        const category = String(transaction.category || "").toLowerCase();
-        if (!["donation", "charity", "help"].some((tag) => category.includes(tag))) return false;
-        const d = new Date(transaction.date);
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-      })
-      .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
-    const donationIncomePercent = totals.income > 0 ? (currentMonthDonations / totals.income) * 100 : 0;
-    const donationStreak = analytics.donationStreakMonths(state.transactions);
     const savingsComponent = totals.income > 0 ? Math.max(0, savingsGap) / totals.income : 0;
-    const donationsForScore = donationsTotal + proofTotals.verified + (proofTotals.pending * 0.3);
-    const donationComponent = totals.income > 0 ? donationsForScore / totals.income : 0;
     const consistencyComponent = behavior.consistency / 100;
 
-    if ($.locationScoreAdjustment) {
-      $.locationScoreAdjustment.textContent = `Adjusted using average income in ${locationLabel} (${formatters.currency(localAverage)}). Net savings impact: ${formatters.currency(savingsGap)}.`;
-    }
-    if ($.scoreFormula) {
-      $.scoreFormula.textContent = `Score = Savings + Donations + Consistency = ${savingsComponent.toFixed(3)} + ${donationComponent.toFixed(3)} + ${consistencyComponent.toFixed(3)}.`;
-    }
-    if ($.savingBehaviorSummary) {
-      $.savingBehaviorSummary.textContent = `${behavior.savingsRate.toFixed(1)}% income saved, consistency ${behavior.consistency}/100 (daily/weekly), streak ${behavior.streak} day${behavior.streak === 1 ? "" : "s"}.`;
-    }
-
-    if ($.totalDonations) $.totalDonations.textContent = formatters.currency(donationsTotal);
-    if ($.donationPercentIncome) $.donationPercentIncome.textContent = `${donationIncomePercent.toFixed(1)}%`;
-    if ($.donationStreak) $.donationStreak.textContent = `${donationStreak} month${donationStreak === 1 ? "" : "s"}`;
-    if ($.donationInsight) $.donationInsight.textContent = `You donated ${donationIncomePercent.toFixed(1)}% of your income this month.`;
-
-    if ($.topDonor) $.topDonor.textContent = leaderboard.entries[0] ? `${leaderboard.entries[0].name} (${formatters.currency(leaderboard.entries[0].donation)})` : "-";
-
-    if ($.leaderboardList) {
-      $.leaderboardList.innerHTML = "";
-      leaderboard.entries.forEach((entry, index) => {
-        const item = document.createElement("li");
-        item.className = entry.name === leaderboard.currentUserName ? "leaderboard-current" : "";
-        const badge = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : "•";
-        item.innerHTML = `<span class="lb-rank">${badge} ${index + 1}</span><span class="lb-name">${entry.name}</span><strong>${formatters.currency(entry.donation)}</strong>`;
-        $.leaderboardList.appendChild(item);
-      });
+    if ($.summaryParagraph) {
+      $.summaryParagraph.textContent = `Top spending category is ${topCategory}. Income vs expenses is ${formatters.currency(totals.income)} vs ${formatters.currency(totals.expenses)}, with ${frequentType.toLowerCase()} as the most frequent transaction type. Weekly comparison is ${weekComparisonCopy}. Savings rate is ${behavior.savingsRate.toFixed(1)}% with a consistency score of ${behavior.consistency}/100 and a saving streak of ${behavior.streak} day${behavior.streak === 1 ? "" : "s"}. Net savings impact is ${formatters.currency(savingsGap)} against ${locationLabel} average income of ${formatters.currency(localAverage)}. Score components are ${savingsComponent.toFixed(3)} savings and ${consistencyComponent.toFixed(3)} consistency.`;
     }
 
     if ($.nearbyRanks) {
@@ -720,32 +662,6 @@ const ui = {
       state.premiumUnlockUntil = unlock.toISOString();
       transactionService.persist();
     }
-
-    const isPremium = hasActivePremiumAccess();
-    const points = Math.round((leaderboard.currentScore * 100) + (analytics.donationAmount(state.transactions) / 10));
-
-    if ($.userTier) $.userTier.textContent = isPremium ? "Premium" : "Free";
-    if ($.pointsEarned) $.pointsEarned.textContent = `${points} pts`;
-    if ($.rewardEligibility) $.rewardEligibility.textContent = isPremium ? "Eligible (Netflix / Amazon rewards)" : "Not eligible yet";
-
-    const profileIncome = Number(state.profile.income?.salary || 0) + Number(state.profile.income?.freelance || 0) + Number(state.profile.income?.business || 0) + Number(state.profile.income?.passive || 0);
-    const donationPercent = Number(state.profile.donation?.percent) || 0;
-    const donationTarget = Math.max(200, Number(((profileIncome * donationPercent) / 100).toFixed(2)) || 200);
-    const donatedSoFar = analytics.donationAmount(state.transactions);
-    const rewardProgressPercent = donationTarget > 0 ? Math.min(100, Math.round((donatedSoFar / donationTarget) * 100)) : 0;
-    const remainingForReward = Math.max(0, donationTarget - donatedSoFar);
-
-    if ($.rewardProgress) $.rewardProgress.textContent = `You are ${rewardProgressPercent}% eligible for Netflix reward`;
-    if ($.rewardUnlockHint) {
-      $.rewardUnlockHint.textContent = remainingForReward > 0
-        ? `Donate ${formatters.currency(remainingForReward)} more to unlock`
-        : "Reward unlocked based on your profile donation target";
-    }
-
-    if ($.advancedInsights) $.advancedInsights.textContent = isPremium ? `Savings ratio ${behavior.savingsRate.toFixed(1)}%, consistency ${behavior.consistency}/100` : "Locked for Free users";
-    if ($.boostStatus) $.boostStatus.textContent = isPremium ? "Boost active in leaderboard" : "Standard visibility";
-    if ($.competitionStatus) $.competitionStatus.textContent = isPremium ? "Special competitions unlocked" : "Open competition (basic)";
-    if ($.premiumUntil) $.premiumUntil.textContent = state.profile.plan === "premium" ? "Plan-based Premium" : (state.premiumUnlockUntil ? new Date(state.premiumUnlockUntil).toLocaleDateString("en-US") : "Not unlocked");
   },
 
 
@@ -797,6 +713,13 @@ const ui = {
 
     if ($.netflixProgressBar) $.netflixProgressBar.textContent = bar;
     if ($.netflixProgressText) $.netflixProgressText.textContent = `₹${Math.round(netSavings)} / ₹${target}`;
+    if ($.netflixProgressFill) $.netflixProgressFill.style.width = `${percent}%`;
+  },
+
+  renderSettingsPreview() {
+    if ($.settingsPlanBadge) $.settingsPlanBadge.textContent = state.profile.plan === "premium" ? "Premium" : "Free";
+    if ($.settingsThemeBadge) $.settingsThemeBadge.textContent = state.profile.preferences?.darkMode ? "Dark" : "Light";
+    if ($.settingsDonateBadge) $.settingsDonateBadge.textContent = state.profile.donation?.autoDonate === false ? "OFF" : "ON";
   },
 
 
@@ -808,9 +731,9 @@ const ui = {
 
     proofs.forEach((proof) => {
       const item = document.createElement("li");
-      const badge = proof.status === "verified" ? "✅" : proof.status === "rejected" ? "❌" : "⏳";
+      const badge = proof.status === "verified" ? "Verified" : proof.status === "rejected" ? "Rejected" : "Pending";
       const header = document.createElement("span");
-      header.innerHTML = `${badge} ${proof.platform} · ${formatters.currency(proof.amount)} · ${proof.status.toUpperCase()}`;
+      header.innerHTML = `${badge} · ${proof.platform} · ${formatters.currency(proof.amount)} · ${proof.status.toUpperCase()}`;
       item.appendChild(header);
 
       const dataStr = String(proof.proof_data || "");
@@ -872,6 +795,7 @@ const ui = {
       const labels = {
         overview: "Dashboard",
         transactions: "Transactions",
+        donation: "Donations",
         leaderboard: "Leaderboard",
         settings: "Settings",
         profile: "Profile"
@@ -889,6 +813,7 @@ const ui = {
     this.renderProfileStatus();
     this.renderProfileForm();
     this.renderSubscriptionProgress();
+    this.renderSettingsPreview();
     this.renderDonationProofs();
   }
 };
@@ -1125,7 +1050,7 @@ function appendDonationProofEntry(amount, platform, proofType, proofData, proofN
     timestamp: `${todayKey()}T${new Date().toISOString().split("T")[1]}`
   });
   transactionService.persist();
-  if ($.proofStatusMessage) $.proofStatusMessage.textContent = "⏳ Verification in progress";
+  if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Verification in progress.";
   if ($.donationProofAmount) $.donationProofAmount.value = "";
   if ($.donationProofData) $.donationProofData.value = "";
   clearDonationProofImageUi();
@@ -1165,7 +1090,7 @@ function handleSubmitDonationProof() {
 
   const todayUploads = state.proofs.filter((proof) => proof.user_id === userId && proof.timestamp?.startsWith(todayKey())).length;
   if (todayUploads >= 5) {
-    if ($.proofStatusMessage) $.proofStatusMessage.textContent = "⚠️ Too many uploads today. Submission sent for review.";
+    if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Too many uploads today. Submission sent for review.";
     return;
   }
 
@@ -1183,7 +1108,7 @@ function handleSubmitDonationProof() {
     compressImageToDataUrl(file)
       .then((dataUrl) => {
         if (isDuplicateImageProof(dataUrl)) {
-          if ($.proofStatusMessage) $.proofStatusMessage.textContent = "❌ Same screenshot used twice.";
+          if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Duplicate screenshot detected.";
           return;
         }
         appendDonationProofEntry(amount, platform, "image", dataUrl, note);
@@ -1202,18 +1127,18 @@ function handleSubmitDonationProof() {
 
   if (proofType === "text") {
     if (!/^[A-Za-z0-9-]{6,}$/.test(proofData)) {
-      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "❌ Invalid transaction ID format.";
+      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Invalid transaction ID format.";
       return;
     }
     if (isDuplicateTransactionId(proofData)) {
-      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "❌ Transaction ID already used.";
+      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Transaction ID already used.";
       return;
     }
   }
 
   if (proofType === "redirect") {
     if (!/^[A-Za-z0-9-]{6,}$/.test(proofData)) {
-      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "❌ Invalid redirect confirmation ID format.";
+      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Invalid redirect confirmation ID format.";
       return;
     }
   }
@@ -1227,7 +1152,7 @@ function handleProofDecision(proofId, decision) {
     return { ...proof, status: decision === "approve" ? "verified" : "rejected" };
   });
   transactionService.persist();
-  if ($.proofStatusMessage) $.proofStatusMessage.textContent = decision === "approve" ? "✅ Verified Donation" : "❌ Proof rejected – upload clearer receipt";
+  if ($.proofStatusMessage) $.proofStatusMessage.textContent = decision === "approve" ? "Donation verified." : "Proof rejected. Upload a clearer receipt.";
   ui.renderAll();
 }
 
