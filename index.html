@@ -193,8 +193,18 @@
           <option value="redirect">🌐 Redirect confirmation</option>
         </select>
 
-        <label for="donationProofData">Proof data (image note / transaction id / redirect id)</label>
-        <input type="text" id="donationProofData" placeholder="Upload reference or transaction id" />
+        <div id="proofFieldsImage" class="proof-field-group">
+          <label for="donationProofImage">Screenshot image</label>
+          <input type="file" id="donationProofImage" accept="image/*" />
+          <label for="donationProofImageNote">Image note (optional)</label>
+          <input type="text" id="donationProofImageNote" placeholder="e.g. receipt ref, date, amount on slip" />
+          <div id="donationProofImagePreview" class="proof-image-preview" hidden aria-live="polite"></div>
+        </div>
+
+        <div id="proofFieldsData" class="proof-field-group" hidden>
+          <label for="donationProofData" id="donationProofDataLabel">Transaction ID</label>
+          <input type="text" id="donationProofData" placeholder="Paste transaction id" />
+        </div>
 
         <div class="form-actions">
           <button type="button" id="submitDonationProofBtn">Submit Proof</button>

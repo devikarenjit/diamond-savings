@@ -273,6 +273,46 @@ select {
 .insight-card { margin-top: 10px; }
 .empty-state { color: var(--muted); }
 
+.proof-field-group {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.proof-field-group label:first-of-type {
+  margin-top: 0;
+}
+
+.proof-image-preview {
+  margin-top: 8px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(95, 139, 255, 0.25);
+  max-width: 100%;
+}
+
+.proof-image-preview img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.donation-proof-thumb-wrap {
+  margin-top: 8px;
+}
+
+.donation-proof-thumb {
+  display: block;
+  max-width: 100%;
+  max-height: 160px;
+  border-radius: 10px;
+  object-fit: contain;
+  border: 1px solid rgba(95, 139, 255, 0.22);
+  background: rgba(0, 0, 0, 0.15);
+}
+
 @media (max-width: 940px) {
   .metric-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
   .profile-grid { grid-template-columns: 1fr; }

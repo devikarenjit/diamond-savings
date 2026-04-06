@@ -93,6 +93,12 @@ const $ = {
   donationProofPlatform: document.getElementById("donationProofPlatform"),
   donationProofType: document.getElementById("donationProofType"),
   donationProofData: document.getElementById("donationProofData"),
+  donationProofDataLabel: document.getElementById("donationProofDataLabel"),
+  donationProofImage: document.getElementById("donationProofImage"),
+  donationProofImageNote: document.getElementById("donationProofImageNote"),
+  donationProofImagePreview: document.getElementById("donationProofImagePreview"),
+  proofFieldsImage: document.getElementById("proofFieldsImage"),
+  proofFieldsData: document.getElementById("proofFieldsData"),
   submitDonationProofBtn: document.getElementById("submitDonationProofBtn"),
   proofStatusMessage: document.getElementById("proofStatusMessage"),
   donationProofList: document.getElementById("donationProofList")
@@ -803,7 +809,43 @@ const ui = {
     proofs.forEach((proof) => {
       const item = document.createElement("li");
       const badge = proof.status === "verified" ? "✅" : proof.status === "rejected" ? "❌" : "⏳";
-      item.innerHTML = `<span>${badge} ${proof.platform} · ${formatters.currency(proof.amount)} · ${proof.status.toUpperCase()}</span>`;
+      const header = document.createElement("span");
+      header.innerHTML = `${badge} ${proof.platform} · ${formatters.currency(proof.amount)} · ${proof.status.toUpperCase()}`;
+      item.appendChild(header);
+
+      const dataStr = String(proof.proof_data || "");
+      if (proof.proof_type === "image") {
+        if (dataStr.startsWith("data:image")) {
+          const wrap = document.createElement("div");
+          wrap.className = "donation-proof-thumb-wrap";
+          const img = document.createElement("img");
+          img.src = dataStr;
+          img.alt = "Donation proof screenshot";
+          img.className = "donation-proof-thumb";
+          img.loading = "lazy";
+          wrap.appendChild(img);
+          if (proof.proof_note) {
+            const noteEl = document.createElement("p");
+            noteEl.className = "goal-copy";
+            noteEl.style.marginTop = "6px";
+            noteEl.textContent = proof.proof_note;
+            wrap.appendChild(noteEl);
+          }
+          item.appendChild(wrap);
+        } else {
+          const legacy = document.createElement("p");
+          legacy.className = "goal-copy";
+          legacy.style.marginTop = "8px";
+          legacy.textContent = dataStr;
+          item.appendChild(legacy);
+        }
+      } else {
+        const line = document.createElement("p");
+        line.className = "goal-copy";
+        line.style.marginTop = "8px";
+        line.textContent = dataStr;
+        item.appendChild(line);
+      }
 
       if (proof.status === "pending") {
         const row = document.createElement("div");
@@ -1005,25 +1047,156 @@ function isDuplicateImageProof(imageRef) {
   return state.proofs.some((proof) => proof.proof_type === "image" && normalizeProofData(proof.proof_data) === normalized);
 }
 
+function compressImageToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxSide = 1600;
+        let { width, height } = img;
+        if (width > maxSide || height > maxSide) {
+          if (width > height) {
+            height = Math.round((height * maxSide) / width);
+            width = maxSide;
+          } else {
+            width = Math.round((width * maxSide) / height);
+            height = maxSide;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas unsupported"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.88));
+      };
+      img.onerror = () => reject(new Error("Invalid image"));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(reader.error || new Error("Read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function syncProofTypeFields() {
+  const type = $.donationProofType?.value || "image";
+  if ($.proofFieldsImage) $.proofFieldsImage.hidden = type !== "image";
+  if ($.proofFieldsData) $.proofFieldsData.hidden = type === "image";
+  if ($.donationProofDataLabel && $.donationProofData) {
+    if (type === "text") {
+      $.donationProofDataLabel.textContent = "Transaction ID";
+      $.donationProofData.placeholder = "Paste transaction id";
+    } else if (type === "redirect") {
+      $.donationProofDataLabel.textContent = "Redirect confirmation ID";
+      $.donationProofData.placeholder = "Paste redirect or confirmation id";
+    }
+  }
+}
+
+function clearDonationProofImageUi() {
+  if ($.donationProofImage) $.donationProofImage.value = "";
+  if ($.donationProofImageNote) $.donationProofImageNote.value = "";
+  if ($.donationProofImagePreview) {
+    $.donationProofImagePreview.innerHTML = "";
+    $.donationProofImagePreview.hidden = true;
+  }
+}
+
 function todayKey() {
   return getToday();
+}
+
+function appendDonationProofEntry(amount, platform, proofType, proofData, proofNote) {
+  const userId = state.profile.displayName || state.profile.name || "User";
+  state.proofs.push({
+    id: Date.now(),
+    user_id: userId,
+    amount,
+    platform,
+    proof_type: proofType,
+    proof_data: proofData,
+    proof_note: proofNote || "",
+    status: "pending",
+    timestamp: `${todayKey()}T${new Date().toISOString().split("T")[1]}`
+  });
+  transactionService.persist();
+  if ($.proofStatusMessage) $.proofStatusMessage.textContent = "⏳ Verification in progress";
+  if ($.donationProofAmount) $.donationProofAmount.value = "";
+  if ($.donationProofData) $.donationProofData.value = "";
+  clearDonationProofImageUi();
+  ui.renderAll();
+}
+
+function onDonationProofImagePick() {
+  const file = $.donationProofImage?.files?.[0];
+  if (!$.donationProofImagePreview) return;
+  if (!file || !file.type.startsWith("image/")) {
+    $.donationProofImagePreview.innerHTML = "";
+    $.donationProofImagePreview.hidden = true;
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    $.donationProofImagePreview.innerHTML = "";
+    const img = document.createElement("img");
+    img.src = reader.result;
+    img.alt = "Screenshot preview";
+    $.donationProofImagePreview.appendChild(img);
+    $.donationProofImagePreview.hidden = false;
+  };
+  reader.readAsDataURL(file);
 }
 
 function handleSubmitDonationProof() {
   const amount = Number($.donationProofAmount?.value || 0);
   const platform = $.donationProofPlatform?.value || "Manual";
   const proofType = $.donationProofType?.value || "image";
-  const proofData = ($.donationProofData?.value || "").trim();
   const userId = state.profile.displayName || state.profile.name || "User";
 
-  if (amount <= 0 || !proofData) {
-    if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Enter amount and valid proof data.";
+  if (amount <= 0) {
+    if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Enter a valid donation amount.";
     return;
   }
 
   const todayUploads = state.proofs.filter((proof) => proof.user_id === userId && proof.timestamp?.startsWith(todayKey())).length;
   if (todayUploads >= 5) {
     if ($.proofStatusMessage) $.proofStatusMessage.textContent = "⚠️ Too many uploads today. Submission sent for review.";
+    return;
+  }
+
+  if (proofType === "image") {
+    const file = $.donationProofImage?.files?.[0];
+    if (!file) {
+      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Choose an image file for your screenshot proof.";
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Image is too large. Use a file under 15 MB.";
+      return;
+    }
+    const note = ($.donationProofImageNote?.value || "").trim();
+    compressImageToDataUrl(file)
+      .then((dataUrl) => {
+        if (isDuplicateImageProof(dataUrl)) {
+          if ($.proofStatusMessage) $.proofStatusMessage.textContent = "❌ Same screenshot used twice.";
+          return;
+        }
+        appendDonationProofEntry(amount, platform, "image", dataUrl, note);
+      })
+      .catch(() => {
+        if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Could not read that image. Try another file.";
+      });
+    return;
+  }
+
+  const proofData = ($.donationProofData?.value || "").trim();
+  if (!proofData) {
+    if ($.proofStatusMessage) $.proofStatusMessage.textContent = "Enter valid proof data.";
     return;
   }
 
@@ -1038,33 +1211,14 @@ function handleSubmitDonationProof() {
     }
   }
 
-  if (proofType === "image") {
-    if (proofData.length < 8 || !/[A-Za-z0-9]/.test(proofData)) {
-      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "⚠️ Image proof seems unclear. Please upload clearer receipt info.";
-      return;
-    }
-    if (isDuplicateImageProof(proofData)) {
-      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "❌ Same screenshot used twice.";
+  if (proofType === "redirect") {
+    if (!/^[A-Za-z0-9-]{6,}$/.test(proofData)) {
+      if ($.proofStatusMessage) $.proofStatusMessage.textContent = "❌ Invalid redirect confirmation ID format.";
       return;
     }
   }
 
-  state.proofs.push({
-    id: Date.now(),
-    user_id: userId,
-    amount,
-    platform,
-    proof_type: proofType,
-    proof_data: proofData,
-    status: "pending",
-    timestamp: `${todayKey()}T${new Date().toISOString().split("T")[1]}`
-  });
-
-  transactionService.persist();
-  if ($.proofStatusMessage) $.proofStatusMessage.textContent = "⏳ Verification in progress";
-  if ($.donationProofAmount) $.donationProofAmount.value = "";
-  if ($.donationProofData) $.donationProofData.value = "";
-  ui.renderAll();
+  appendDonationProofEntry(amount, platform, proofType, proofData, "");
 }
 
 function handleProofDecision(proofId, decision) {
@@ -1149,6 +1303,8 @@ function bindEvents() {
   if ($.saveProfileBtn) $.saveProfileBtn.addEventListener("click", handleSaveProfile);
   if ($.saveSettingsBtn) $.saveSettingsBtn.addEventListener("click", handleSaveSettings);
   if ($.submitDonationProofBtn) $.submitDonationProofBtn.addEventListener("click", handleSubmitDonationProof);
+  if ($.donationProofType) $.donationProofType.addEventListener("change", syncProofTypeFields);
+  if ($.donationProofImage) $.donationProofImage.addEventListener("change", onDonationProofImagePick);
 
   $.transactionList.addEventListener("click", (event) => {
     const editId = event.target.getAttribute("data-edit");
@@ -1257,6 +1413,7 @@ function initialize() {
     transactionService.persist();
   }
   bindEvents();
+  syncProofTypeFields();
   applyTheme();
   processMonthlyDonation();
   ui.switchView("overview");
