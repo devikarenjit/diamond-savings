@@ -1,4 +1,9 @@
-const STORAGE_KEY = "diamond-savings-dashboard-v1";
+const STORAGE_KEYS = {
+  legacy: "diamond-savings-dashboard-v1",
+  appState: "diamond-savings-app-state-v2",
+  transactions: "diamond-savings-transactions-v1",
+  proofs: "diamond-savings-donation-proofs-v1"
+};
 
 const $ = {
   date: document.getElementById("date"),
@@ -81,7 +86,7 @@ const $ = {
   boostStatus: document.getElementById("boostStatus"),
   competitionStatus: document.getElementById("competitionStatus"),
   premiumUntil: document.getElementById("premiumUntil"),
-  settingsDisplayName: document.getElementById("settingsDisplayName"),
+  profileDisplayName: document.getElementById("profileDisplayName"),
   settingsPlan: document.getElementById("settingsPlan"),
   autoDonateToggle: document.getElementById("autoDonateToggle"),
   darkModeToggle: document.getElementById("darkModeToggle"),
@@ -106,7 +111,21 @@ const $ = {
   submitDonationProofBtn: document.getElementById("submitDonationProofBtn"),
   proofStatusMessage: document.getElementById("proofStatusMessage"),
   donationProofList: document.getElementById("donationProofList"),
-  summaryParagraph: document.getElementById("summaryParagraph")
+  summaryParagraph: document.getElementById("summaryParagraph"),
+  overviewTransactionCount: document.getElementById("overviewTransactionCount"),
+  overviewVerifiedDonations: document.getElementById("overviewVerifiedDonations"),
+  overviewNextStep: document.getElementById("overviewNextStep"),
+  overviewNextStepCopy: document.getElementById("overviewNextStepCopy"),
+  transactionIncomeTotal: document.getElementById("transactionIncomeTotal"),
+  transactionExpenseTotal: document.getElementById("transactionExpenseTotal"),
+  transactionEntryCount: document.getElementById("transactionEntryCount"),
+  filterChips: document.querySelectorAll("[data-filter-type]"),
+  categoryChips: document.querySelectorAll("[data-category-chip]"),
+  donationVerifiedTotal: document.getElementById("donationVerifiedTotal"),
+  donationPendingTotal: document.getElementById("donationPendingTotal"),
+  donationAutoEstimate: document.getElementById("donationAutoEstimate"),
+  leaderboardRankHint: document.getElementById("leaderboardRankHint"),
+  profileProgressCopy: document.getElementById("profileProgressCopy")
 };
 
 
@@ -139,27 +158,65 @@ const hasIncomeSource = (profile) =>
 
 const isProfileComplete = (profile) => Boolean(profile.name.trim() && profile.displayName.trim() && profile.location.trim() && hasIncomeSource(profile));
 
+function readJsonStorage(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeStoredTransaction(transaction) {
+  return {
+    id: Number(transaction?.id) || Date.now(),
+    amount: Number(transaction?.amount) || 0,
+    type: transaction?.type === "expense" ? "expense" : "income",
+    category: String(transaction?.category || "").trim(),
+    date: transaction?.date || getToday(),
+    notes: String(transaction?.notes || "").trim()
+  };
+}
+
+function normalizeStoredProof(proof) {
+  return {
+    id: Number(proof?.id) || Date.now(),
+    user_id: String(proof?.user_id || "User").trim(),
+    amount: Number(proof?.amount) || 0,
+    platform: String(proof?.platform || "Manual").trim(),
+    proof_type: ["image", "text", "redirect"].includes(proof?.proof_type) ? proof.proof_type : "text",
+    proof_data: String(proof?.proof_data || ""),
+    proof_note: String(proof?.proof_note || "").trim(),
+    status: ["verified", "rejected", "pending"].includes(proof?.status) ? proof.status : "pending",
+    timestamp: proof?.timestamp || `${getToday()}T${new Date().toISOString().split("T")[1]}`
+  };
+}
+
 const dataStore = {
   load() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false, premiumUnlockUntil: null, leaderboardAlias: generateCreativeAlias(), donationLastProcessedMonth: null, proofs: [] };
+      const legacyState = readJsonStorage(STORAGE_KEYS.legacy) || {};
+      const appState = readJsonStorage(STORAGE_KEYS.appState) || legacyState;
+      const storedTransactions = readJsonStorage(STORAGE_KEYS.transactions);
+      const storedProofs = readJsonStorage(STORAGE_KEYS.proofs);
 
-      const parsed = JSON.parse(raw);
       return {
-        transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
-        monthlyGoal: Number(parsed.monthlyGoal) || 0,
-        profile: parsed.profile ? { ...getDefaultProfile(), ...parsed.profile,
-          income: { ...getDefaultProfile().income, ...(parsed.profile.income || {}) },
-          expenses: { ...getDefaultProfile().expenses, ...(parsed.profile.expenses || {}) },
-          goals: { ...getDefaultProfile().goals, ...(parsed.profile.goals || {}) },
-          donation: { ...getDefaultProfile().donation, ...(parsed.profile.donation || {}) },
-          preferences: { ...getDefaultProfile().preferences, ...(parsed.profile.preferences || {}) } } : getDefaultProfile(),
-        profileCompleted: Boolean(parsed.profileCompleted),
-        premiumUnlockUntil: parsed.premiumUnlockUntil || null,
-        leaderboardAlias: parsed.leaderboardAlias || generateCreativeAlias(),
-        donationLastProcessedMonth: parsed.donationLastProcessedMonth || null,
-        proofs: Array.isArray(parsed.proofs) ? parsed.proofs : []
+        transactions: (Array.isArray(storedTransactions) ? storedTransactions : appState.transactions || [])
+          .map(normalizeStoredTransaction)
+          .filter((transaction) => transaction.amount > 0 && transaction.category),
+        monthlyGoal: Number(appState.monthlyGoal) || 0,
+        profile: appState.profile ? { ...getDefaultProfile(), ...appState.profile,
+          income: { ...getDefaultProfile().income, ...(appState.profile.income || {}) },
+          expenses: { ...getDefaultProfile().expenses, ...(appState.profile.expenses || {}) },
+          goals: { ...getDefaultProfile().goals, ...(appState.profile.goals || {}) },
+          donation: { ...getDefaultProfile().donation, ...(appState.profile.donation || {}) },
+          preferences: { ...getDefaultProfile().preferences, ...(appState.profile.preferences || {}) } } : getDefaultProfile(),
+        profileCompleted: Boolean(appState.profileCompleted),
+        premiumUnlockUntil: appState.premiumUnlockUntil || null,
+        leaderboardAlias: appState.leaderboardAlias || generateCreativeAlias(),
+        donationLastProcessedMonth: appState.donationLastProcessedMonth || null,
+        proofs: (Array.isArray(storedProofs) ? storedProofs : appState.proofs || [])
+          .map(normalizeStoredProof)
       };
     } catch {
       return { transactions: [], monthlyGoal: 0, profile: getDefaultProfile(), profileCompleted: false, premiumUnlockUntil: null, leaderboardAlias: generateCreativeAlias(), donationLastProcessedMonth: null, proofs: [] };
@@ -167,9 +224,34 @@ const dataStore = {
   },
 
   save(state) {
+    const normalizedTransactions = (state.transactions || []).map(normalizeStoredTransaction);
+    const normalizedProofs = (state.proofs || []).map(normalizeStoredProof);
+
+    localStorage.setItem(STORAGE_KEYS.transactions, JSON.stringify(normalizedTransactions));
+    localStorage.setItem(STORAGE_KEYS.proofs, JSON.stringify(normalizedProofs));
     localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ transactions: state.transactions, monthlyGoal: state.monthlyGoal, profile: state.profile, profileCompleted: state.profileCompleted, premiumUnlockUntil: state.premiumUnlockUntil, leaderboardAlias: state.leaderboardAlias, donationLastProcessedMonth: state.donationLastProcessedMonth, proofs: state.proofs })
+      STORAGE_KEYS.appState,
+      JSON.stringify({
+        monthlyGoal: state.monthlyGoal,
+        profile: state.profile,
+        profileCompleted: state.profileCompleted,
+        premiumUnlockUntil: state.premiumUnlockUntil,
+        leaderboardAlias: state.leaderboardAlias,
+        donationLastProcessedMonth: state.donationLastProcessedMonth
+      })
+    );
+    localStorage.setItem(
+      STORAGE_KEYS.legacy,
+      JSON.stringify({
+        transactions: normalizedTransactions,
+        monthlyGoal: state.monthlyGoal,
+        profile: state.profile,
+        profileCompleted: state.profileCompleted,
+        premiumUnlockUntil: state.premiumUnlockUntil,
+        leaderboardAlias: state.leaderboardAlias,
+        donationLastProcessedMonth: state.donationLastProcessedMonth,
+        proofs: normalizedProofs
+      })
     );
   }
 };
@@ -181,6 +263,7 @@ const state = {
   profile: initialData.profile || getDefaultProfile(),
   profileCompleted: Boolean(initialData.profileCompleted),
   editingId: null,
+  transactionFilter: "all",
   currentView: "overview",
   premiumUnlockUntil: initialData.premiumUnlockUntil || null,
   leaderboardAlias: initialData.leaderboardAlias || generateCreativeAlias(),
@@ -190,12 +273,28 @@ const state = {
 
 const formatters = {
   currency(value) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "INR"
-    }).format(value || 0).replace("₹", "Rs ");
+    const amount = Number(value) || 0;
+    return `Rs ${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 };
+
+function getFilteredTransactions() {
+  const query = $.searchInput?.value.trim().toLowerCase() || "";
+  return [...state.transactions]
+    .filter((transaction) => {
+      const matchesQuery =
+        transaction.category.toLowerCase().includes(query) ||
+        transaction.notes.toLowerCase().includes(query);
+
+      if (!matchesQuery) return false;
+      if (state.transactionFilter === "all") return true;
+      if (state.transactionFilter === "donation") {
+        return ["donation", "charity", "help"].some((tag) => transaction.category.toLowerCase().includes(tag));
+      }
+      return transaction.type === state.transactionFilter;
+    })
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+}
 
 const transactionService = {
   add(payload) {
@@ -460,19 +559,24 @@ const ui = {
   },
 
   renderTransactions() {
-    const query = $.searchInput.value.trim().toLowerCase();
-    const filteredTransactions = [...state.transactions]
-      .filter(
-        (transaction) =>
-          transaction.category.toLowerCase().includes(query) ||
-          transaction.notes.toLowerCase().includes(query)
-      )
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    const filteredTransactions = getFilteredTransactions();
+    const filteredTotals = analytics.totals(filteredTransactions);
+
+    if ($.transactionIncomeTotal) $.transactionIncomeTotal.textContent = formatters.currency(filteredTotals.income);
+    if ($.transactionExpenseTotal) $.transactionExpenseTotal.textContent = formatters.currency(filteredTotals.expenses);
+    if ($.transactionEntryCount) $.transactionEntryCount.textContent = String(filteredTransactions.length);
 
     $.transactionList.innerHTML = "";
 
     if (!filteredTransactions.length) {
-      $.transactionList.appendChild(this.createEmptyState("No transactions found."));
+      const empty = document.createElement("li");
+      empty.className = "empty-state empty-state-card";
+      empty.innerHTML = `
+        <strong>No transactions found</strong>
+        <p>Try another filter or add a fresh entry.</p>
+        <button type="button" data-empty-action="open-form">Add transaction</button>
+      `;
+      $.transactionList.appendChild(empty);
       return;
     }
 
@@ -481,8 +585,8 @@ const ui = {
       item.className = `transaction-item ${transaction.type === "income" ? "transaction-income" : "transaction-expense"}`;
       item.innerHTML = `
         <div>
-          <p class="item-main">${transaction.type.toUpperCase()} · ${formatters.currency(transaction.amount)} · ${transaction.category}</p>
-          <p class="item-sub">${transaction.date}${transaction.notes ? ` · ${transaction.notes}` : ""}</p>
+          <p class="item-main">${transaction.type.toUpperCase()} | ${formatters.currency(transaction.amount)} | ${transaction.category}</p>
+          <p class="item-sub">${transaction.date}${transaction.notes ? ` | ${transaction.notes}` : ""}</p>
         </div>
         <div class="item-actions">
           <button type="button" data-edit="${transaction.id}">Edit</button>
@@ -509,10 +613,36 @@ const ui = {
     if (state.monthlyGoal === 0) {
       $.goalMessage.textContent = "Set a monthly savings target to track progress.";
     } else if (savings >= state.monthlyGoal) {
-      $.goalMessage.textContent = "Monthly savings target reached.";
+      $.goalMessage.textContent = "You are ahead of goal this month. Keep the momentum going.";
     } else {
-      $.goalMessage.textContent = `${formatters.currency(state.monthlyGoal - savings)} remaining to reach your monthly target.`;
+      $.goalMessage.textContent = `${formatters.currency(state.monthlyGoal - savings)} remaining to reach your monthly target. You are still in range to catch up.`;
     }
+
+    const proofTotals = analytics.donationProofTotals(state.proofs);
+    const nextStep = !state.transactions.length
+      ? {
+          title: "Add your first transaction",
+          copy: "Once you log income or spending, the dashboard becomes much more useful."
+        }
+      : !state.monthlyGoal
+        ? {
+            title: "Set a monthly goal",
+            copy: "A target makes progress and rewards easier to understand."
+          }
+        : !state.profileCompleted
+          ? {
+              title: "Complete your profile",
+              copy: "Profile details unlock better comparisons and leaderboard scoring."
+            }
+          : {
+              title: "Upload donation proof",
+              copy: "Verified giving improves trust and keeps your donation history complete."
+            };
+
+    if ($.overviewTransactionCount) $.overviewTransactionCount.textContent = String(state.transactions.length);
+    if ($.overviewVerifiedDonations) $.overviewVerifiedDonations.textContent = formatters.currency(proofTotals.verified);
+    if ($.overviewNextStep) $.overviewNextStep.textContent = nextStep.title;
+    if ($.overviewNextStepCopy) $.overviewNextStepCopy.textContent = nextStep.copy;
   },
 
   renderCategoryBreakdown() {
@@ -583,6 +713,7 @@ const ui = {
     if (!state.transactions.length) {
       if ($.summaryParagraph) $.summaryParagraph.textContent = "Add transactions to generate your financial summary.";
       if ($.leaderboardRank) $.leaderboardRank.textContent = "-";
+      if ($.leaderboardRankHint) $.leaderboardRankHint.textContent = "Complete your profile and keep logging transactions to compete.";
       if ($.nearbyRanks) $.nearbyRanks.innerHTML = "";
       return;
     }
@@ -615,6 +746,7 @@ const ui = {
     const rank = leaderboard.entries.findIndex((entry) => entry.name === leaderboard.currentUserName) + 1;
     if ($.leaderboardScore) $.leaderboardScore.textContent = leaderboard.currentScore.toFixed(3);
     if ($.leaderboardRank) $.leaderboardRank.textContent = rank > 0 ? `#${rank}` : "-";
+    if ($.leaderboardRankHint) $.leaderboardRankHint.textContent = rank <= 1 ? "You are currently setting the pace." : "Small consistency gains can move you up quickly.";
 
     const localAverage = analytics.localAverageIncome(state.profile.location);
     const locationLabel = state.profile.location?.trim() ? state.profile.location.trim() : "your region";
@@ -623,7 +755,7 @@ const ui = {
     const consistencyComponent = behavior.consistency / 100;
 
     if ($.summaryParagraph) {
-      $.summaryParagraph.textContent = `Top spending category is ${topCategory}. Income vs expenses is ${formatters.currency(totals.income)} vs ${formatters.currency(totals.expenses)}, with ${frequentType.toLowerCase()} as the most frequent transaction type. Weekly comparison is ${weekComparisonCopy}. Savings rate is ${behavior.savingsRate.toFixed(1)}% with a consistency score of ${behavior.consistency}/100 and a saving streak of ${behavior.streak} day${behavior.streak === 1 ? "" : "s"}. Net savings impact is ${formatters.currency(savingsGap)} against ${locationLabel} average income of ${formatters.currency(localAverage)}. Score components are ${savingsComponent.toFixed(3)} savings and ${consistencyComponent.toFixed(3)} consistency.`;
+      $.summaryParagraph.textContent = `Your biggest expense category right now is ${topCategory}. You have logged ${formatters.currency(totals.income)} in income and ${formatters.currency(totals.expenses)} in expenses, with ${frequentType.toLowerCase()} appearing most often. This week is ${weekComparisonCopy} Your savings rate is ${behavior.savingsRate.toFixed(1)}%, consistency is ${behavior.consistency}/100, and your current streak is ${behavior.streak} day${behavior.streak === 1 ? "" : "s"}. Against an estimated ${locationLabel} average income of ${formatters.currency(localAverage)}, your current net savings sit at ${formatters.currency(savingsGap)}.`;
     }
 
     if ($.nearbyRanks) {
@@ -638,14 +770,14 @@ const ui = {
       if (prevEntry) {
         const diff = Math.max(0, toPoints(prevEntry) - currentPoints);
         const item = document.createElement("li");
-        item.textContent = `#${currentIndex} → +${diff} points ahead`;
+        item.textContent = `#${currentIndex} is ${diff} points ahead of you.`;
         $.nearbyRanks.appendChild(item);
       }
 
       if (nextEntry) {
         const diff = Math.max(0, currentPoints - toPoints(nextEntry));
         const item = document.createElement("li");
-        item.textContent = `#${currentIndex + 2} → -${diff} points behind`;
+        item.textContent = `#${currentIndex + 2} is ${diff} points behind you.`;
         $.nearbyRanks.appendChild(item);
       }
 
@@ -660,7 +792,7 @@ const ui = {
       $.top5Leaders.innerHTML = '';
       leaderboard.entries.slice(0, 5).forEach((entry, index) => {
         const li = document.createElement('li');
-        li.textContent = `#${index + 1} ${entry.name} · ${formatters.currency(entry.donation)} · ${entry.score.toFixed(3)}`;
+        li.textContent = `#${index + 1} ${entry.name} | ${formatters.currency(entry.donation)} donated | score ${entry.score.toFixed(3)}`;
         $.top5Leaders.appendChild(li);
       });
     }
@@ -684,16 +816,26 @@ const ui = {
     if ($.profileStatusLabel) $.profileStatusLabel.textContent = label;
     if ($.profileStatusCopy) $.profileStatusCopy.textContent = copy;
     if ($.profileBadge) $.profileBadge.textContent = label;
+    if ($.profileProgressCopy) {
+      const completedFields = [
+        state.profile.name,
+        state.profile.displayName,
+        state.profile.location,
+        hasIncomeSource(state.profile) ? "income" : ""
+      ].filter(Boolean).length;
+      const progress = Math.round((completedFields / 4) * 100);
+      $.profileProgressCopy.textContent = `Required fields are ${progress}% complete.`;
+    }
   },
 
   renderProfileForm() {
     const p = state.profile;
     if (!$.profileName) return;
     $.profileName.value = p.name;
+    if ($.profileDisplayName) $.profileDisplayName.value = p.displayName;
     $.profileLocation.value = p.location;
     $.profileDependents.value = p.dependents;
     $.profileFamilyResponsibilities.value = p.familyResponsibilities;
-    if ($.settingsDisplayName) $.settingsDisplayName.value = p.displayName;
     if ($.settingsPlan) $.settingsPlan.value = p.plan;
     if ($.autoDonateToggle) $.autoDonateToggle.value = p.donation.autoDonate === false ? "off" : "on";
     if ($.darkModeToggle) $.darkModeToggle.value = p.preferences?.darkMode ? "on" : "off";
@@ -719,10 +861,10 @@ const ui = {
     const ratio = target > 0 ? Math.min(1, netSavings / target) : 0;
     const percent = Math.round(ratio * 100);
     const filled = Math.round(ratio * 10);
-    const bar = `[${"█".repeat(filled)}${"░".repeat(10 - filled)}] ${percent}% complete`;
+    const bar = `[${"#".repeat(filled)}${"-".repeat(10 - filled)}] ${percent}% complete`;
 
     if ($.netflixProgressBar) $.netflixProgressBar.textContent = bar;
-    if ($.netflixProgressText) $.netflixProgressText.textContent = `₹${Math.round(netSavings)} / ₹${target}`;
+    if ($.netflixProgressText) $.netflixProgressText.textContent = `${formatters.currency(Math.round(netSavings))} / ${formatters.currency(target)}`;
     if ($.netflixProgressFill) $.netflixProgressFill.style.width = `${percent}%`;
   },
 
@@ -738,12 +880,32 @@ const ui = {
     $.donationProofList.innerHTML = "";
     const currentUser = state.profile.displayName || state.profile.name || "User";
     const proofs = (state.proofs || []).filter((proof) => proof.user_id === currentUser).slice().reverse();
+    const proofTotals = analytics.donationProofTotals(proofs);
+    const monthlyIncome =
+      Number(state.profile.income.salary || 0) +
+      Number(state.profile.income.freelance || 0) +
+      Number(state.profile.income.business || 0) +
+      Number(state.profile.income.passive || 0);
+    const autoEstimate = state.profile.donation.autoDonate === false
+      ? 0
+      : Number(((monthlyIncome * (Number(state.profile.donation.percent || 0) || 0)) / 100).toFixed(2));
+
+    if ($.donationVerifiedTotal) $.donationVerifiedTotal.textContent = formatters.currency(proofTotals.verified);
+    if ($.donationPendingTotal) $.donationPendingTotal.textContent = formatters.currency(proofTotals.pending);
+    if ($.donationAutoEstimate) $.donationAutoEstimate.textContent = formatters.currency(autoEstimate);
+
+    if (!proofs.length) {
+      $.donationProofList.appendChild(this.createEmptyState("No donation proofs submitted yet."));
+      return;
+    }
 
     proofs.forEach((proof) => {
       const item = document.createElement("li");
+      item.className = "proof-item";
       const badge = proof.status === "verified" ? "Verified" : proof.status === "rejected" ? "Rejected" : "Pending";
       const header = document.createElement("span");
-      header.innerHTML = `${badge} · ${proof.platform} · ${formatters.currency(proof.amount)} · ${proof.status.toUpperCase()}`;
+      header.className = "proof-header";
+      header.textContent = `${badge} | ${proof.platform} | ${formatters.currency(proof.amount)} | ${proof.status.toUpperCase()}`;
       item.appendChild(header);
 
       const dataStr = String(proof.proof_data || "");
@@ -780,6 +942,11 @@ const ui = {
         item.appendChild(line);
       }
 
+      const meta = document.createElement("p");
+      meta.className = "goal-copy";
+      meta.textContent = `Submitted ${String(proof.timestamp || "").replace("T", " ").slice(0, 16)}`;
+      item.appendChild(meta);
+
       if (proof.status === "pending") {
         const row = document.createElement("div");
         row.className = "form-actions";
@@ -811,6 +978,17 @@ const ui = {
         profile: "Profile"
       };
       $.pageTitle.textContent = labels[view] || "Dashboard";
+    }
+    if ($.homeSubtitle) {
+      const subtitles = {
+        overview: "A quick snapshot of your money in and money out.",
+        transactions: "Log entries quickly, filter history, and stay organized.",
+        donation: "Track giving, keep proofs tidy, and see what is verified.",
+        leaderboard: "See how savings discipline and consistency shape your rank.",
+        settings: "Control appearance, plan status, and app behavior.",
+        profile: "Complete the details that personalize your financial journey."
+      };
+      $.homeSubtitle.textContent = subtitles[view] || subtitles.overview;
     }
   },
 
@@ -868,6 +1046,12 @@ function handleSaveTransaction() {
   ui.renderAll();
 }
 
+function setTransactionFilter(filter) {
+  state.transactionFilter = filter;
+  $.filterChips.forEach((chip) => chip.classList.toggle("active", chip.dataset.filterType === filter));
+  ui.renderTransactions();
+}
+
 function handleEditTransaction(id) {
   const transaction = transactionService.findById(id);
   if (!transaction) return;
@@ -905,7 +1089,7 @@ function handleSetGoal() {
 function getProfileFormValues() {
   return {
     name: $.profileName.value.trim(),
-    displayName: state.profile.displayName || "",
+    displayName: $.profileDisplayName?.value.trim() || "",
     location: $.profileLocation.value.trim(),
     dependents: Number($.profileDependents.value) || 0,
     familyResponsibilities: $.profileFamilyResponsibilities.value.trim(),
@@ -935,7 +1119,7 @@ function getProfileFormValues() {
 
 function validateProfile(profile) {
   if (!profile.name || !profile.displayName || !profile.location) {
-    return "Name and location are required. Set display name in Settings.";
+    return "Name, display name, and location are required.";
   }
 
   if (!hasIncomeSource(profile)) {
@@ -1168,7 +1352,6 @@ function handleProofDecision(proofId, decision) {
 
 function handleSaveSettings() {
   if (!$.settingsPlan) return;
-  state.profile.displayName = $.settingsDisplayName?.value.trim() || state.profile.displayName;
   state.profile.plan = $.settingsPlan.value;
   state.profile.donation.autoDonate = $.autoDonateToggle ? $.autoDonateToggle.value !== "off" : true;
   state.profile.preferences.darkMode = $.darkModeToggle ? $.darkModeToggle.value === "on" : false;
@@ -1263,8 +1446,8 @@ function bindEvents() {
       mobileNavClose.addEventListener("click", closeMenu);
     }
 
-    // Close menu when nav item is clicked
-    mobileNav.querySelectorAll(".tab-btn, .dropdown-item").forEach((button) => {
+    // Close menu when a final destination is clicked
+    mobileNav.querySelectorAll(".dropdown-item, .mobile-nav > .tab-btn").forEach((button) => {
       button.addEventListener("click", closeMenu);
     });
 
@@ -1290,6 +1473,10 @@ function bindEvents() {
   $.cancelBtn.addEventListener("click", () => ui.closeForm());
   $.goalBtn.addEventListener("click", handleSetGoal);
   $.searchInput.addEventListener("input", () => ui.renderTransactions());
+  $.filterChips.forEach((chip) => chip.addEventListener("click", () => setTransactionFilter(chip.dataset.filterType || "all")));
+  $.categoryChips.forEach((chip) => chip.addEventListener("click", () => {
+    if ($.category) $.category.value = chip.dataset.categoryChip || "";
+  }));
   if ($.saveProfileBtn) $.saveProfileBtn.addEventListener("click", handleSaveProfile);
   if ($.saveSettingsBtn) $.saveSettingsBtn.addEventListener("click", handleSaveSettings);
   if ($.submitDonationProofBtn) $.submitDonationProofBtn.addEventListener("click", handleSubmitDonationProof);
@@ -1299,12 +1486,15 @@ function bindEvents() {
   $.transactionList.addEventListener("click", (event) => {
     const editId = event.target.getAttribute("data-edit");
     const deleteId = event.target.getAttribute("data-delete");
+    const emptyAction = event.target.getAttribute("data-empty-action");
 
     if (editId) handleEditTransaction(Number(editId));
     if (deleteId) {
+      if (!window.confirm("Delete this transaction from your history?")) return;
       transactionService.remove(Number(deleteId));
       ui.renderAll();
     }
+    if (emptyAction === "open-form") ui.openForm();
   });
 
   if ($.donationProofList) {
@@ -1318,6 +1508,8 @@ function bindEvents() {
 
   document.querySelectorAll(".tab-btn").forEach((button) => {
     button.addEventListener("click", (event) => {
+      const isMobileDropdownTrigger = window.innerWidth <= 768 && button.closest(".mobile-nav") && button.closest(".nav-dropdown");
+      if (isMobileDropdownTrigger) return;
       event.preventDefault();
       const target = button.dataset.view;
       if (!target) return;
@@ -1343,8 +1535,6 @@ function bindEvents() {
     trigger.addEventListener("click", (event) => {
       if (window.innerWidth <= 768) {
         event.preventDefault();
-        const target = trigger.dataset.view;
-        if (target) ui.switchView(target);
         dropdown.classList.toggle("open");
       }
     });
